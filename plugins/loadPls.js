@@ -7,6 +7,9 @@ const pluginsJsonPath = path.join("./plugins", "plugins.json");
 
 function readPluginsJson() {
   try {
+    if (!fs.existsSync(pluginsJsonPath)) {
+      return {};
+    }
     const pluginsJson = fs.readFileSync(pluginsJsonPath, "utf8");
     return JSON.parse(pluginsJson);
   } catch (error) {

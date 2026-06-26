@@ -1,0 +1,647 @@
+<%- include('../components/template') %>
+<main id="content" class="opacity-0 transition-opacity duration-300">
+   <div class="bg-transparent">
+      <div class="sm:flex sm:items-center px-8 pt-4">
+         <div class="sm:flex-auto">
+            <h1 class="text-base font-medium leading-6 text-white">Plugin Manager</h1>
+            <p class="mt-1 tracking-tight text-sm text-neutral-500">Search, install, update, and manage Minecraft plugins directly on this instance.</p>
+         </div>
+      </div>
+   </div>
+
+   <%- include('../components/instance') %>
+
+   <!-- Main Plugin Manager Interface -->
+   <div class="px-8 mt-4">
+      <!-- Tabs Header -->
+      <div class="border-b border-white/5 flex justify-between items-center mb-6">
+         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button onclick="switchTab('browse')" id="tab-browse" class="tab-btn border-indigo-500 text-indigo-400 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
+               Browse Plugins
+            </button>
+            <button onclick="switchTab('installed')" id="tab-installed" class="tab-btn border-transparent text-neutral-400 hover:border-neutral-300 hover:text-neutral-300 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
+               Installed Plugins
+               <span id="installed-badge" class="ml-2 rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs font-semibold text-neutral-300 hidden">0</span>
+            </button>
+            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn border-transparent text-neutral-400 hover:border-neutral-300 hover:text-neutral-300 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
+               Active Tasks
+               <span id="tasks-badge" class="ml-2 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-400 hidden">0</span>
+            </button>
+         </nav>
+         <div id="bulk-actions" class="hidden">
+            <button onclick="triggerBulkUpdate()" id="btn-bulk-update" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
+               Bulk Update Selected
+            </button>
+            <button onclick="triggerBulkInstall()" id="btn-bulk-install" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
+               Install Selected
+            </button>
+         </div>
+      </div>
+
+      <!-- Tab: Browse -->
+      <div id="panel-browse" class="tab-panel">
+         <!-- Search & Filter Controls -->
+         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="md:col-span-2 relative">
+               <input type="text" id="plugin-search-input" onkeyup="handleSearchKeyup(event)" placeholder="Search Modrinth, Hangar, Spiget, GitHub..." class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+               <button onclick="performSearch()" class="absolute right-3 top-3.5 text-neutral-400 hover:text-white transition">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+               </button>
+            </div>
+            <div>
+               <select id="filter-software" onchange="performSearch()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+                  <option value="" class="bg-neutral-900">All Platforms</option>
+                  <option value="paper" class="bg-neutral-900" <%= serverInfo.software === 'paper' ? 'selected' : '' %>>Paper / Spigot / Bukkit</option>
+                  <option value="velocity" class="bg-neutral-900" <%= serverInfo.software === 'velocity' ? 'selected' : '' %>>Velocity</option>
+                  <option value="bungeecord" class="bg-neutral-900" <%= serverInfo.software === 'bungeecord' ? 'selected' : '' %>>BungeeCord</option>
+                  <option value="fabric" class="bg-neutral-900" <%= serverInfo.software === 'fabric' ? 'selected' : '' %>>Fabric</option>
+                  <option value="forge" class="bg-neutral-900" <%= serverInfo.software === 'forge' ? 'selected' : '' %>>Forge</option>
+               </select>
+            </div>
+            <div>
+               <input type="text" id="filter-version" onchange="performSearch()" placeholder="Minecraft Version (e.g. <%= serverInfo.minecraftVersion || '1.21' %>)" value="<%= serverInfo.minecraftVersion || '' %>" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all">
+            </div>
+         </div>
+
+         <!-- Loader & Empty State -->
+         <div id="browse-loader" class="hidden flex justify-center py-12">
+            <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+         </div>
+
+         <div id="browse-empty" class="text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p class="text-base font-medium">Search for Minecraft plugins to begin</p>
+            <p class="text-xs text-neutral-500 mt-1">Queries are sent securely across Modrinth, Hangar, Spiget, and GitHub.</p>
+         </div>
+
+         <!-- Search Results Grid -->
+         <div id="browse-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+      </div>
+
+      <!-- Tab: Installed -->
+      <div id="panel-installed" class="tab-panel hidden">
+         <div id="installed-loader" class="flex justify-center py-12">
+            <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+         </div>
+
+         <div id="installed-empty" class="text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5M5 19v-4M9 5h4" />
+            </svg>
+            <p class="text-base font-medium">No plugins detected</p>
+            <p class="text-xs text-neutral-500 mt-1">Upload JARs to the <code>/plugins/</code> directory or install them using the browser tab.</p>
+         </div>
+
+         <div id="installed-list" class="space-y-4 hidden"></div>
+      </div>
+
+      <!-- Tab: Tasks -->
+      <div id="panel-tasks" class="tab-panel hidden">
+         <div id="tasks-empty" class="text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
+            <p class="text-base font-medium">No active or queued tasks</p>
+            <p class="text-xs text-neutral-500 mt-1">Installation and uninstall tasks progress will stream here in real time.</p>
+         </div>
+
+         <div id="tasks-list" class="space-y-4 hidden"></div>
+      </div>
+   </div>
+
+   <!-- Modal: Plugin Details -->
+   <div id="details-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+         <div class="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+         <div class="relative inline-block align-bottom bg-neutral-900 border border-white/10 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <!-- Modal content loader -->
+            <div id="modal-loader" class="flex justify-center py-24">
+               <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+            </div>
+
+            <!-- Modal Content (Actual Details) -->
+            <div id="modal-content" class="hidden">
+               <div class="px-6 py-5 border-b border-white/5 flex justify-between items-start">
+                  <div class="flex items-center space-x-4">
+                     <img id="modal-icon" src="" alt="Plugin icon" class="w-14 h-14 rounded-xl bg-white/5 object-contain" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+                     <div>
+                        <div class="flex items-center space-x-2">
+                           <h3 class="text-lg font-medium leading-6 text-white" id="modal-name">Plugin Name</h3>
+                           <span id="modal-badge-verified" class="hidden rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">Verified</span>
+                        </div>
+                        <p class="text-sm text-neutral-400 mt-1" id="modal-author">by author</p>
+                     </div>
+                  </div>
+                  <button onclick="closeModal()" class="text-neutral-400 hover:text-white transition">
+                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                  </button>
+               </div>
+
+               <div class="px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto">
+                  <!-- Main Left Content -->
+                  <div class="lg:col-span-2 space-y-6">
+                     <div>
+                        <h4 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Description</h4>
+                        <p class="text-sm text-neutral-300 leading-relaxed" id="modal-description"></p>
+                     </div>
+
+                     <!-- Dependency Resolution Area -->
+                     <div id="modal-dependencies-section" class="hidden">
+                        <h4 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Dependencies</h4>
+                        <div id="modal-dependencies" class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/5"></div>
+                     </div>
+
+                     <div>
+                        <h4 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Compatible Versions</h4>
+                        <div class="overflow-hidden border border-white/5 rounded-xl">
+                           <table class="min-w-full divide-y divide-white/5">
+                              <thead class="bg-white/5">
+                                 <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Version</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Minecraft</th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Loaders</th>
+                                    <th scope="col" class="relative px-4 py-3"></th>
+                                 </tr>
+                              </thead>
+                              <tbody id="modal-versions-list" class="divide-y divide-white/5 bg-transparent"></tbody>
+                           </table>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Sidebar Right Details -->
+                  <div class="space-y-6 bg-white/5 p-5 rounded-2xl border border-white/5 h-fit">
+                     <div>
+                        <span class="text-xs font-semibold text-neutral-400 block mb-1">Downloads</span>
+                        <span class="text-lg font-bold text-white" id="modal-downloads">0</span>
+                     </div>
+                     <div>
+                        <span class="text-xs font-semibold text-neutral-400 block mb-1">Stars</span>
+                        <span class="text-lg font-bold text-white" id="modal-stars">0</span>
+                     </div>
+                     <div>
+                        <span class="text-xs font-semibold text-neutral-400 block mb-1">Source Platform</span>
+                        <span class="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-400" id="modal-provider">Provider</span>
+                     </div>
+                     <div>
+                        <span class="text-xs font-semibold text-neutral-400 block mb-1">Links</span>
+                        <div class="space-y-2 mt-2">
+                           <a id="modal-link-source" href="#" target="_blank" class="flex items-center text-xs text-neutral-300 hover:text-white transition">
+                              <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                              </svg>
+                              Source Code
+                           </a>
+                           <a id="modal-link-wiki" href="#" target="_blank" class="flex items-center text-xs text-neutral-300 hover:text-white transition">
+                              <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                              </svg>
+                              Wiki / Documentation
+                           </a>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</main>
+
+<script>
+   // Variables passed from Express
+   const instanceId = '<%= instance.Id %>';
+   const activeTasks = new Map(); // taskId -> task progress record
+
+   // Connect to the background task socket
+   let ws;
+   function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/instance/${instanceId}/plugins/ws`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+         try {
+            const data = JSON.parse(event.data);
+            if (data.event === 'progress') {
+               updateTaskProgress(data);
+            }
+         } catch (err) {
+            console.error('Failed to parse WebSocket message:', err);
+         }
+      };
+
+      ws.onclose = () => {
+         setTimeout(connectWebSocket, 5000); // Auto-reconnect
+      };
+   }
+
+   // Initialize elements
+   document.addEventListener('DOMContentLoaded', () => {
+      connectWebSocket();
+      loadInstalledPlugins();
+   });
+
+   // SPA Tab Switcher
+   function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+         btn.classList.remove('border-indigo-500', 'text-indigo-400');
+         btn.classList.add('border-transparent', 'text-neutral-400');
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+         panel.classList.add('hidden');
+      });
+
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      activeBtn.classList.remove('border-transparent', 'text-neutral-400');
+      activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+
+      document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+
+      if (tabId === 'installed') {
+         loadInstalledPlugins();
+      }
+   }
+
+   // ─── Task Progress Rendering ──────────────────────────────────────────────
+   function updateTaskProgress(data) {
+      const { taskId, status, detail } = data;
+      activeTasks.set(taskId, { status, detail });
+
+      const tasksBadge = document.getElementById('tasks-badge');
+      const activeCount = Array.from(activeTasks.values()).filter(t => t.status === 'running' || t.status === 'queued').length;
+      if (activeCount > 0) {
+         tasksBadge.innerText = activeCount;
+         tasksBadge.classList.remove('hidden');
+      } else {
+         tasksBadge.classList.add('hidden');
+      }
+
+      // Re-render task panel content
+      renderTasksList();
+
+      // If a task completes, automatically reload installed plugin list in background
+      if (status === 'completed') {
+         setTimeout(() => {
+            activeTasks.delete(taskId);
+            renderTasksList();
+            loadInstalledPlugins();
+         }, 4000);
+      }
+   }
+
+   function renderTasksList() {
+      const container = document.getElementById('tasks-list');
+      const emptyState = document.getElementById('tasks-empty');
+
+      if (activeTasks.size === 0) {
+         container.classList.add('hidden');
+         emptyState.classList.remove('hidden');
+         return;
+      }
+
+      container.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = '';
+      activeTasks.forEach((task, id) => {
+         let statusColor = 'bg-indigo-600';
+         let textColor = 'text-indigo-400';
+         let percent = '50%';
+
+         if (task.status === 'downloading') {
+            statusColor = 'bg-amber-500';
+            textColor = 'text-amber-400';
+            percent = '30%';
+         } else if (task.status === 'validating') {
+            statusColor = 'bg-blue-500';
+            textColor = 'text-blue-400';
+            percent = '60%';
+         } else if (task.status === 'installing') {
+            statusColor = 'bg-indigo-600';
+            textColor = 'text-indigo-400';
+            percent = '80%';
+         } else if (task.status === 'completed') {
+            statusColor = 'bg-emerald-500';
+            textColor = 'text-emerald-400';
+            percent = '100%';
+         } else if (task.status === 'failed') {
+            statusColor = 'bg-rose-500';
+            textColor = 'text-rose-400';
+            percent = '100%';
+         }
+
+         const item = document.createElement('div');
+         item.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4';
+         item.innerHTML = `
+            <div class="flex-grow">
+               <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-semibold text-white">Task ID: ${id.substring(0, 8)}</span>
+                  <span class="text-xs font-semibold ${textColor} uppercase tracking-wider">${task.status}</span>
+               </div>
+               <div class="w-full bg-neutral-800 rounded-full h-2">
+                  <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${percent}"></div>
+               </div>
+               <p class="text-xs text-neutral-400 mt-2">${task.detail || ''}</p>
+            </div>
+         `;
+         container.appendChild(item);
+      });
+   }
+
+   // ─── Installed Plugins Listing ─────────────────────────────────────────────
+   let installedList = [];
+   async function loadInstalledPlugins() {
+      const loader = document.getElementById('installed-loader');
+      const emptyState = document.getElementById('installed-empty');
+      const list = document.getElementById('installed-list');
+      const badge = document.getElementById('installed-badge');
+
+      loader.classList.remove('hidden');
+      list.classList.add('hidden');
+      emptyState.classList.add('hidden');
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/installed`);
+         const data = await res.json();
+         installedList = data.plugins || [];
+
+         badge.innerText = installedList.length;
+         badge.classList.remove('hidden');
+
+         if (installedList.length === 0) {
+            emptyState.classList.remove('hidden');
+         } else {
+            list.classList.remove('hidden');
+            list.innerHTML = '';
+            installedList.forEach(plugin => {
+               const item = document.createElement('div');
+               item.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 flex items-center justify-between hover:bg-white/[0.07] transition-all duration-300';
+               
+               let desc = plugin.description || 'No description provided.';
+               let metaBadges = `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-1 text-xs font-medium text-neutral-400">${plugin.platform || 'unknown'}</span>`;
+
+               if (plugin.parseError) {
+                  metaBadges += `<span class="inline-flex items-center rounded-md bg-rose-500/10 px-2 py-1 text-xs font-medium text-rose-400 ml-2">Metadata Parse Error</span>`;
+                  desc = `<span class="text-rose-400 font-mono text-xs">Failed to parse JAR: ${plugin.parseError}</span>`;
+               }
+
+               item.innerHTML = `
+                  <div class="flex items-center space-x-4">
+                     <div class="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-neutral-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                     </div>
+                     <div>
+                        <div class="flex items-center space-x-2">
+                           <h3 class="text-sm font-semibold text-white">${plugin.name}</h3>
+                           <span class="inline-flex items-center rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400">v${plugin.version}</span>
+                        </div>
+                        <p class="text-xs text-neutral-400 mt-1 max-w-xl truncate">${desc}</p>
+                        <div class="mt-2 flex items-center space-x-2">
+                           ${metaBadges}
+                           <span class="text-xs text-neutral-500 font-mono">${plugin.filename} (${(plugin.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="flex items-center space-x-3">
+                     <button onclick="uninstallPlugin('${plugin.filename}')" class="rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2.5 text-xs font-medium text-rose-400 transition-all">
+                        Uninstall
+                     </button>
+                  </div>
+               `;
+               list.appendChild(item);
+            });
+         }
+      } catch (err) {
+         console.error('Failed to load installed plugins:', err);
+      } finally {
+         loader.classList.add('hidden');
+      }
+   }
+
+   // ─── Uninstall Handler ──────────────────────────────────────────────────────
+   async function uninstallPlugin(filename) {
+      if (!confirm(`Are you sure you want to remove '${filename}'? This action is immediate.`)) return;
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/uninstall`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+         });
+         const data = await res.json();
+         switchTab('tasks');
+         if (data.taskId) {
+            updateTaskProgress({ taskId: data.taskId, status: 'uninstalling', detail: `Uninstalling ${filename}...` });
+         }
+      } catch (err) {
+         alert('Uninstall request failed.');
+      }
+   }
+
+   // ─── Search Handlers ────────────────────────────────────────────────────────
+   function handleSearchKeyup(e) {
+      if (e.key === 'Enter') performSearch();
+   }
+
+   async function performSearch() {
+      const query = document.getElementById('plugin-search-input').value.trim();
+      if (!query) return;
+
+      const software = document.getElementById('filter-software').value;
+      const version = document.getElementById('filter-version').value;
+
+      const loader = document.getElementById('browse-loader');
+      const emptyState = document.getElementById('browse-empty');
+      const resultsContainer = document.getElementById('browse-results');
+
+      loader.classList.remove('hidden');
+      resultsContainer.classList.add('hidden');
+      emptyState.classList.add('hidden');
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/search?q=${encodeURIComponent(query)}&software=${software}&version=${version}`);
+         const data = await res.json();
+         const results = data.results || [];
+
+         if (results.length === 0) {
+            emptyState.innerHTML = `
+               <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+               <p class="text-base font-medium">No results found for "${query}"</p>
+               <p class="text-xs text-neutral-500 mt-1">Try broadening your search or adjusting platform/version filters.</p>
+            `;
+            emptyState.classList.remove('hidden');
+         } else {
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('hidden');
+
+            results.forEach(plugin => {
+               const card = document.createElement('div');
+               card.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 hover:border-indigo-500/30 hover:bg-white/[0.07] cursor-pointer transition-all duration-300 flex flex-col justify-between h-64';
+               card.onclick = () => openDetails(plugin.provider, plugin.providerId);
+
+               let platformBadges = (plugin.compatibleLoaders || []).slice(0, 3)
+                  .map(l => `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">${l}</span>`)
+                  .join(' ');
+
+               card.innerHTML = `
+                  <div>
+                     <div class="flex items-start justify-between">
+                        <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" alt="" class="w-12 h-12 rounded-xl bg-white/5 object-contain" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-wide bg-neutral-800/40 px-2 py-1 rounded-md border border-white/5">${plugin.provider}</span>
+                     </div>
+                     <h3 class="text-sm font-semibold text-white mt-4 truncate">${plugin.name}</h3>
+                     <p class="text-xs text-neutral-400 mt-2 line-clamp-2 h-8">${plugin.description || 'No description.'}</p>
+                  </div>
+                  <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                     <div class="flex flex-wrap gap-1 max-w-[60%]">
+                        ${platformBadges || '<span class="text-[10px] text-neutral-500">Universal</span>'}
+                     </div>
+                     <span class="text-[11px] font-medium text-neutral-400 flex items-center">
+                        <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        ${plugin.downloads.toLocaleString()}
+                     </span>
+                  </div>
+               `;
+               resultsContainer.appendChild(card);
+            });
+         }
+      } catch (err) {
+         console.error('Failed to perform search:', err);
+      } finally {
+         loader.classList.add('hidden');
+      }
+   }
+
+   // ─── Plugin Details Modal ──────────────────────────────────────────────────
+   function closeModal() {
+      document.getElementById('details-modal').classList.add('hidden');
+   }
+
+   async function openDetails(provider, pluginId) {
+      const modal = document.getElementById('details-modal');
+      const loader = document.getElementById('modal-loader');
+      const content = document.getElementById('modal-content');
+
+      modal.classList.remove('hidden');
+      loader.classList.remove('hidden');
+      content.classList.add('hidden');
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/details/${provider}/${pluginId}`);
+         const data = await res.json();
+         const details = data.details;
+         const versions = data.versions || [];
+
+         loader.classList.add('hidden');
+         content.classList.remove('hidden');
+
+         // Populate details
+         document.getElementById('modal-icon').src = details.iconUrl || 'https://i.imgur.com/uvDunAR.png';
+         document.getElementById('modal-name').innerText = details.name;
+         document.getElementById('modal-author').innerText = `by ${details.author || 'Unknown'}`;
+         document.getElementById('modal-description').innerText = details.description || 'No description.';
+         document.getElementById('modal-downloads').innerText = details.downloads ? details.downloads.toLocaleString() : 'N/A';
+         document.getElementById('modal-stars').innerText = details.stars ? details.stars.toLocaleString() : 'N/A';
+         document.getElementById('modal-provider').innerText = provider.toUpperCase();
+
+         const verifiedBadge = document.getElementById('modal-badge-verified');
+         if (details.verified) verifiedBadge.classList.remove('hidden');
+         else verifiedBadge.classList.add('hidden');
+
+         const sourceLink = document.getElementById('modal-link-source');
+         if (details.sourceUrl) {
+            sourceLink.href = details.sourceUrl;
+            sourceLink.classList.remove('hidden');
+         } else {
+            sourceLink.classList.add('hidden');
+         }
+
+         const wikiLink = document.getElementById('modal-link-wiki');
+         if (details.wikiUrl) {
+            wikiLink.href = details.wikiUrl;
+            wikiLink.classList.remove('hidden');
+         } else {
+            wikiLink.classList.add('hidden');
+         }
+
+         // Populate versions
+         const tbody = document.getElementById('modal-versions-list');
+         tbody.innerHTML = '';
+
+         if (versions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-xs text-center text-neutral-500">No versions available.</td></tr>';
+         } else {
+            versions.forEach(version => {
+               const row = document.createElement('tr');
+               const loaders = (version.compatibleLoaders || []).join(', ') || 'Any';
+               const mc = (version.compatibleMinecraftVersions || []).slice(0, 3).join(', ') || 'Any';
+
+               // Check if this exact plugin version is already installed
+               const isInstalled = installedList.some(p => 
+                  p.name.toLowerCase() === details.name.toLowerCase() && p.version === version.versionNumber
+               );
+
+               const actionBtn = isInstalled 
+                  ? `<button disabled class="rounded-lg bg-neutral-800 text-neutral-500 px-3 py-1.5 text-xs font-semibold">Installed</button>`
+                  : `<button onclick="installPluginVersion('${encodeURIComponent(version.downloadUrl)}', '${encodeURIComponent(version.filename)}', '${version.checksum || ''}')" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 text-xs font-semibold transition-all">Install</button>`;
+
+               row.innerHTML = `
+                  <td class="px-4 py-3 text-xs font-bold text-white">${version.versionNumber}</td>
+                  <td class="px-4 py-3 text-xs text-neutral-300 max-w-[200px] truncate" title="${(version.compatibleMinecraftVersions || []).join(', ')}">${mc}</td>
+                  <td class="px-4 py-3 text-xs text-neutral-300">${loaders}</td>
+                  <td class="px-4 py-3 text-right">${actionBtn}</td>
+               `;
+               tbody.appendChild(row);
+            });
+         }
+      } catch (err) {
+         console.error('Failed to load details:', err);
+         closeModal();
+      }
+   }
+
+   // ─── Install Version Handler ───────────────────────────────────────────────
+   async function installPluginVersion(url, filename, checksum) {
+      closeModal();
+      switchTab('tasks');
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/install`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               url: decodeURIComponent(url),
+               filename: decodeURIComponent(filename),
+               checksum
+            })
+         });
+         const data = await res.json();
+         if (data.taskId) {
+            updateTaskProgress({ taskId: data.taskId, status: 'downloading', detail: `Preparing to download ${decodeURIComponent(filename)}...` });
+         }
+      } catch (err) {
+         alert('Failed to enqueue installation task.');
+      }
+   }
+</script>

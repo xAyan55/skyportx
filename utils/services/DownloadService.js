@@ -78,7 +78,7 @@ class DownloadService {
         responseType: "stream",
         timeout: DOWNLOAD_TIMEOUT,
         headers: {
-          "User-Agent": "SkyportPanel/0.3.0 (Minecraft Plugin Manager)"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
         maxRedirects: 5,
       });

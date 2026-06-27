@@ -16,7 +16,7 @@
       <!-- Tabs Header -->
       <div class="border-b border-white/5 flex justify-between items-center mb-6">
          <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-            <button onclick="switchTab('browse')" id="tab-browse" class="tab-btn border-indigo-500 text-indigo-400 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
+            <button onclick="switchTab('browse')" id="tab-browse" class="tab-btn border-blue-500 text-blue-400 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
                Browse Plugins
             </button>
             <button onclick="switchTab('installed')" id="tab-installed" class="tab-btn border-transparent text-neutral-400 hover:border-neutral-300 hover:text-neutral-300 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all">
@@ -29,10 +29,10 @@
             </button>
          </nav>
          <div id="bulk-actions" class="hidden">
-            <button onclick="triggerBulkUpdate()" id="btn-bulk-update" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
+            <button onclick="triggerBulkUpdate()" id="btn-bulk-update" class="rounded-xl <%= theme['button-color'] %> hover:opacity-90 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
                Bulk Update Selected
             </button>
-            <button onclick="triggerBulkInstall()" id="btn-bulk-install" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
+            <button onclick="triggerBulkInstall()" id="btn-bulk-install" class="rounded-xl <%= theme['button-color'] %> hover:opacity-90 px-4 py-2 text-xs font-medium text-white shadow transition-all hidden">
                Install Selected
             </button>
          </div>
@@ -43,7 +43,7 @@
          <!-- Search & Filter Controls -->
          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="md:col-span-2 relative">
-               <input type="text" id="plugin-search-input" oninput="handleSearchInput()" placeholder="Search Modrinth, Hangar, Spiget, GitHub..." class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all text-sm" aria-label="Search Plugins">
+                <input type="text" id="plugin-search-input" oninput="handleSearchInput()" placeholder="Search Modrinth, Hangar, Spiget, GitHub..." class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-blue-500 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500 transition-all text-sm" aria-label="Search Plugins">
                <button onclick="performSearch()" class="absolute right-3 top-3.5 text-neutral-400 hover:text-white transition" aria-label="Submit Search">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -51,7 +51,7 @@
                </button>
             </div>
             <div>
-               <select id="filter-software" onchange="triggerMarketplaceLoad()" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer" aria-label="Filter by Platform">
+               <select id="filter-software" onchange="triggerMarketplaceLoad()" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-blue-500 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer" aria-label="Filter by Platform">
                   <option value="" class="bg-neutral-900">All Platforms</option>
                   <option value="paper" class="bg-neutral-900" <%= serverInfo.software === 'paper' ? 'selected' : '' %>>Paper / Spigot / Bukkit</option>
                   <option value="velocity" class="bg-neutral-900" <%= serverInfo.software === 'velocity' ? 'selected' : '' %>>Velocity</option>
@@ -61,7 +61,7 @@
                </select>
             </div>
             <div>
-               <input type="text" id="filter-version" onchange="triggerMarketplaceLoad()" placeholder="Minecraft Version (e.g. <%= serverInfo.minecraftVersion || '1.21' %>)" value="<%= serverInfo.minecraftVersion || '' %>" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all" aria-label="Filter by Minecraft Version">
+               <input type="text" id="filter-version" onchange="triggerMarketplaceLoad()" placeholder="Minecraft Version (e.g. <%= serverInfo.minecraftVersion || '1.21' %>)" value="<%= serverInfo.minecraftVersion || '' %>" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-blue-500 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-blue-500 transition-all" aria-label="Filter by Minecraft Version">
             </div>
          </div>
 
@@ -94,7 +94,7 @@
             </svg>
             <p class="text-base font-medium text-white">Failed to connect to marketplace providers</p>
             <p class="text-xs text-neutral-500 mt-1 mb-4">Please check your network connection or try again.</p>
-            <button onclick="triggerMarketplaceLoad()" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow transition-all">Retry Connection</button>
+            <button onclick="triggerMarketplaceLoad()" class="rounded-xl <%= theme['button-color'] %> hover:opacity-90 px-4 py-2 text-xs font-semibold text-white shadow transition-all">Retry Connection</button>
          </div>
 
          <!-- Marketplace Home Dashboard -->
@@ -118,7 +118,7 @@
                <div class="lg:col-span-2 space-y-8">
                   <section aria-labelledby="recommended-title">
                      <h2 id="recommended-title" class="text-base font-semibold text-white mb-4 flex items-center">
-                        <svg class="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-5 w-5 mr-2 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         Recommended For Your Server
@@ -142,7 +142,7 @@
                      </div>
                      
                      <div id="popular-infinite-loader" class="hidden flex justify-center py-6">
-                        <svg class="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                        <svg width="24" height="24" style="width: 24px; height: 24px;" class="animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -168,7 +168,7 @@
                   <!-- Installed Plugins Summary -->
                   <section aria-labelledby="installed-summary-title" class="bg-white/5 border border-white/5 rounded-2xl p-6">
                      <h2 id="installed-summary-title" class="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-4 flex items-center">
-                        <svg class="h-4 w-4 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-4 w-4 mr-2 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Installed Plugins
@@ -176,7 +176,7 @@
                      <div id="installed-summary-list" class="space-y-3">
                         <!-- compact lists -->
                      </div>
-                     <button onclick="switchTab('installed')" class="mt-4 w-full text-center text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-all">Manage All Installed Plugins &rarr;</button>
+                     <button onclick="switchTab('installed')" class="mt-4 w-full text-center text-xs text-blue-400 hover:text-blue-300 font-semibold transition-all">Manage All Installed Plugins &rarr;</button>
                   </section>
                </div>
             </div>
@@ -186,14 +186,14 @@
          <div id="search-results-container" class="hidden space-y-6">
             <div class="flex justify-between items-center">
                <h2 id="search-title" class="text-base font-semibold text-white">Search Results</h2>
-               <button onclick="clearSearch()" class="text-xs text-indigo-400 hover:text-indigo-350 font-medium">Clear Search</button>
+               <button onclick="clearSearch()" class="text-xs text-blue-400 hover:text-blue-350 font-medium">Clear Search</button>
             </div>
             <div id="search-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                <!-- search items -->
             </div>
             
             <div id="search-infinite-loader" class="hidden flex justify-center py-6">
-               <svg class="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+               <svg width="24" height="24" style="width: 24px; height: 24px;" class="animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                </svg>
@@ -218,7 +218,7 @@
       <!-- Tab: Installed -->
       <div id="panel-installed" class="tab-panel hidden">
          <div id="installed-loader" class="flex justify-center py-12">
-            <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+            <svg width="32" height="32" style="width: 32px; height: 32px;" class="animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -254,7 +254,7 @@
          <div class="relative inline-block align-bottom bg-neutral-900 border border-white/10 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
             <!-- Modal content loader -->
             <div id="modal-loader" class="flex justify-center py-24">
-               <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+               <svg width="32" height="32" style="width: 32px; height: 32px;" class="animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                </svg>
@@ -273,7 +273,7 @@
                         <p class="text-sm text-neutral-400 mt-1" id="modal-author">by author</p>
                      </div>
                   </div>
-                  <button onclick="closeModal()" class="text-neutral-400 hover:text-white transition focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1" aria-label="Close modal">
+                  <button onclick="closeModal()" class="text-neutral-400 hover:text-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1" aria-label="Close modal">
                      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                      </svg>
@@ -354,6 +354,7 @@
 <script>
    // Variables passed from Express
    const instanceId = '<%= instance.Id %>';
+   const themeButtonColor = "<%- theme['button-color'] %>";
    const activeTasks = new Map(); // taskId -> task progress record
 
    let installedList = [];
@@ -617,7 +618,7 @@
 
       // Add 'All' pill
       const allPill = document.createElement('button');
-      allPill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${activeCategory === '' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-neutral-400 hover:text-white'}`;
+      allPill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${activeCategory === '' ? themeButtonColor : 'bg-white/5 text-neutral-400 hover:text-white'}`;
       allPill.innerText = 'All Categories';
       allPill.onclick = () => selectCategory('');
       container.appendChild(allPill);
@@ -625,7 +626,7 @@
       Array.from(categoriesSet).sort().forEach(cat => {
          const pill = document.createElement('button');
          const isSelected = activeCategory === cat;
-         pill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-white/5 text-neutral-400 hover:text-white'}`;
+         pill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isSelected ? themeButtonColor : 'bg-white/5 text-neutral-400 hover:text-white'}`;
          pill.innerText = cat.charAt(0).toUpperCase() + cat.slice(1);
          pill.onclick = () => selectCategory(cat);
          container.appendChild(pill);
@@ -959,7 +960,7 @@
    function createPluginCard(plugin, highlightQuery = '') {
       const card = document.createElement('div');
       const uniqueId = `${plugin.provider}-${plugin.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-      card.className = 'bg-white/5 border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.07] rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between h-[360px] relative group';
+      card.className = 'bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.07] rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between h-[360px] relative group';
       card.setAttribute('tabindex', '0');
       card.setAttribute('role', 'article');
       card.setAttribute('aria-label', `${plugin.name} by ${plugin.author}`);
@@ -988,11 +989,11 @@
             installBtnContent = 'Retry';
             installBtnClass = 'bg-rose-600 hover:bg-rose-500 text-white';
             installBtnDisabled = false;
-            statusText = 'Installation failed';
+            statusText = `Installation failed: ${taskState.detail || 'Unknown error'}`;
             statusClass = 'text-rose-400';
          } else {
             installBtnContent = `
-               <svg class="animate-spin h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24">
+               <svg width="14" height="14" style="width: 14px; height: 14px;" class="animate-spin mr-1.5 inline-block" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                </svg>
@@ -1009,9 +1010,9 @@
       } else if (isInstalled) {
          if (hasUpdate) {
             installBtnContent = 'Update Available';
-            installBtnClass = 'bg-indigo-600 hover:bg-indigo-500 text-white';
+            installBtnClass = themeButtonColor + ' hover:opacity-90';
             statusText = 'Update is available';
-            statusClass = 'text-indigo-400';
+            statusClass = 'text-blue-400';
          } else {
             installBtnContent = 'Installed';
             installBtnClass = 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 cursor-default';
@@ -1021,7 +1022,7 @@
          }
       } else {
          installBtnContent = 'Install';
-         installBtnClass = 'bg-indigo-600 hover:bg-indigo-500 text-white';
+         installBtnClass = themeButtonColor + ' hover:opacity-90';
       }
 
       let platformBadges = (plugin.compatibleLoaders || []).slice(0, 2)
@@ -1045,11 +1046,11 @@
                </div>
                <div class="flex flex-col items-end space-y-1">
                   <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-neutral-800 px-2 py-0.5 rounded-md border border-white/5">${plugin.provider}</span>
-                  ${plugin.latestVersion ? `<span class="text-[10px] font-medium text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">v${plugin.latestVersion}</span>` : ''}
+                  ${plugin.latestVersion ? `<span class="text-[10px] font-medium text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">v${plugin.latestVersion}</span>` : ''}
                </div>
             </div>
 
-            <h3 class="text-base font-semibold text-white mt-4 truncate group-hover:text-indigo-400 transition-colors" title="${plugin.name}">${highlightedName}</h3>
+            <h3 class="text-base font-semibold text-white mt-4 truncate group-hover:text-blue-400 transition-colors" title="${plugin.name}">${highlightedName}</h3>
             <p class="text-xs text-neutral-400 mt-1">by <span class="text-neutral-300 font-medium">${plugin.author}</span></p>
             <p class="text-xs text-neutral-400 mt-3 line-clamp-3 h-12 leading-relaxed">${highlightedDesc}</p>
          </div>
@@ -1078,13 +1079,13 @@
                </button>
                
                <button onclick="event.stopPropagation(); openDetails('${plugin.provider}', '${plugin.id}')" 
-                       class="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       class="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500">
                   Details
                </button>
                
                <div class="relative inline-block text-left">
                   <button onclick="event.stopPropagation(); toggleCardDropdown(event, '${uniqueId}')" 
-                          class="dropdown-btn rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 p-2 text-neutral-400 hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          class="dropdown-btn rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 p-2 text-neutral-400 hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                           aria-label="More actions"
                           aria-haspopup="true">
                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1253,8 +1254,8 @@
 
       container.innerHTML = '';
       activeTasks.forEach((task, id) => {
-         let statusColor = 'bg-indigo-600';
-         let textColor = 'text-indigo-400';
+         let statusColor = 'bg-blue-600';
+         let textColor = 'text-blue-400';
          let percent = '50%';
 
          if (task.status === 'downloading') {
@@ -1266,8 +1267,8 @@
             textColor = 'text-blue-400';
             percent = '60%';
          } else if (task.status === 'installing') {
-            statusColor = 'bg-indigo-600';
-            textColor = 'text-indigo-400';
+            statusColor = 'bg-blue-600';
+            textColor = 'text-blue-400';
             percent = '80%';
          } else if (task.status === 'completed') {
             statusColor = 'bg-emerald-500';
@@ -1336,7 +1337,7 @@
                <div>
                   <div class="flex items-center space-x-2">
                      <h3 class="text-sm font-semibold text-white">${plugin.name}</h3>
-                     <span class="inline-flex items-center rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400">v${plugin.version}</span>
+                     <span class="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">v${plugin.version}</span>
                   </div>
                   <p class="text-xs text-neutral-400 mt-1 max-w-xl truncate">${desc}</p>
                   <div class="mt-2 flex items-center space-x-2">
@@ -1476,7 +1477,7 @@
 
                const actionBtn = isInstalled 
                   ? `<button disabled class="rounded-lg bg-neutral-800 text-neutral-500 px-3 py-1.5 text-xs font-semibold">Installed</button>`
-                  : `<button onclick="installPluginVersion('${encodeURIComponent(version.files[0]?.url || version.downloadUrl)}', '${encodeURIComponent(version.files[0]?.filename || version.filename)}', '${version.checksum || ''}', '${provider}', '${pluginId}', '${details.name.replace(/'/g, "\\'")}')" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 text-xs font-semibold transition-all">Install</button>`;
+                  : `<button onclick="installPluginVersion('${encodeURIComponent(version.files[0]?.url || version.downloadUrl)}', '${encodeURIComponent(version.files[0]?.filename || version.filename)}', '${version.checksum || ''}', '${provider}', '${pluginId}', '${details.name.replace(/'/g, "\\'")}')" class="rounded-lg ${themeButtonColor} hover:opacity-90 text-white px-3 py-1.5 text-xs font-semibold transition-all">Install</button>`;
 
                row.innerHTML = `
                   <td class="px-4 py-3 text-xs font-bold text-white">${version.versionNumber}</td>

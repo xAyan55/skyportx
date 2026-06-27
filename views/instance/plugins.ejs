@@ -264,7 +264,7 @@
             <div id="modal-content" class="hidden">
                <div class="px-6 py-5 border-b border-white/5 flex justify-between items-start">
                   <div class="flex items-center space-x-4">
-                     <img id="modal-icon" src="" alt="Plugin icon" class="w-14 h-14 rounded-xl bg-white/5 object-contain" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+                     <img id="modal-icon" src="" width="56" height="56" style="width: 56px; height: 56px; max-width: 56px; max-height: 56px;" alt="Plugin icon" class="rounded-xl bg-white/5 object-contain" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
                      <div>
                         <div class="flex items-center space-x-2">
                            <h3 class="text-lg font-medium leading-6 text-white" id="modal-name">Plugin Name</h3>
@@ -659,7 +659,7 @@
       container.innerHTML = '';
       for (let i = 0; i < count; i++) {
          const skeleton = document.createElement('div');
-         skeleton.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 h-[360px] animate-pulse flex flex-col justify-between';
+         skeleton.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 h-[390px] animate-pulse flex flex-col justify-between';
          skeleton.innerHTML = `
             <div>
                <div class="flex items-start justify-between">
@@ -718,7 +718,7 @@
       const timeStr = days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
 
       item.innerHTML = `
-         <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" class="w-10 h-10 rounded-lg bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+         <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" width="40" height="40" style="width: 40px; height: 40px; max-width: 40px; max-height: 40px;" class="rounded-lg bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
          <div class="flex-grow min-w-0">
             <h4 class="text-xs font-semibold text-white truncate">${plugin.name}</h4>
             <p class="text-[10px] text-neutral-400 mt-0.5 truncate">by ${plugin.author}</p>
@@ -960,7 +960,7 @@
    function createPluginCard(plugin, highlightQuery = '') {
       const card = document.createElement('div');
       const uniqueId = `${plugin.provider}-${plugin.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-      card.className = 'bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.07] rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between h-[360px] relative group';
+      card.className = 'bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.07] rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between h-[390px] relative group';
       card.setAttribute('tabindex', '0');
       card.setAttribute('role', 'article');
       card.setAttribute('aria-label', `${plugin.name} by ${plugin.author}`);
@@ -1036,7 +1036,7 @@
          <div>
             <div class="flex items-start justify-between">
                <div class="relative">
-                  <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" alt="" class="w-14 h-14 rounded-xl bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+                  <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" width="56" height="56" style="width: 56px; height: 56px; max-width: 56px; max-height: 56px;" alt="" class="rounded-xl bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
                   ${plugin.verified ? `
                   <span class="absolute -top-1.5 -right-1.5 bg-emerald-500 text-neutral-950 rounded-full p-0.5 shadow-md flex items-center justify-center w-5 h-5 border border-neutral-900" title="Verified Project">
                      <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">

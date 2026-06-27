@@ -15,10 +15,21 @@ class SpigetProvider extends BaseProvider {
 
   async search(query, filters = {}) {
     try {
+      if (!query) {
+        const response = await this.api.get("/resources", {
+          params: {
+            size: 40,
+            sort: filters.sortBy === "updated" ? "-updateDate" : "-downloads",
+            fields: "id,name,tag,contributors,likes,downloads,icon,author,version,testedVersions"
+          }
+        });
+        return (response.data || []).map(res => PluginNormalizer.normalizeSpiget(res));
+      }
+
       const response = await this.api.get(`/search/resources/${encodeURIComponent(query)}`, {
         params: {
           size: 20,
-          fields: "id,name,tag,contributors,likes,downloads,icon,author"
+          fields: "id,name,tag,contributors,likes,downloads,icon,author,version,testedVersions"
         }
       });
       return (response.data || []).map(res => PluginNormalizer.normalizeSpiget(res));

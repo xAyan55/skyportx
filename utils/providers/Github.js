@@ -15,6 +15,17 @@ class GithubProvider extends BaseProvider {
 
   async search(query, filters = {}) {
     try {
+      if (!query) {
+        const params = {
+          q: "topic:minecraft-plugin",
+          sort: filters.sortBy === "updated" ? "updated" : "stars",
+          order: "desc",
+          per_page: 40
+        };
+        const response = await this.api.get("/search/repositories", { params });
+        return (response.data.items || []).map(item => PluginNormalizer.normalizeGithub(item));
+      }
+
       // If query is a repo directly (owner/name), search by repository path
       if (query.includes("/")) {
         const repoDetails = await this.getDetails(query);

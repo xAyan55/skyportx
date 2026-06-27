@@ -43,15 +43,15 @@
          <!-- Search & Filter Controls -->
          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="md:col-span-2 relative">
-               <input type="text" id="plugin-search-input" onkeyup="handleSearchKeyup(event)" placeholder="Search Modrinth, Hangar, Spiget, GitHub..." class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
-               <button onclick="performSearch()" class="absolute right-3 top-3.5 text-neutral-400 hover:text-white transition">
+               <input type="text" id="plugin-search-input" oninput="handleSearchInput()" placeholder="Search Modrinth, Hangar, Spiget, GitHub..." class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all text-sm" aria-label="Search Plugins">
+               <button onclick="performSearch()" class="absolute right-3 top-3.5 text-neutral-400 hover:text-white transition" aria-label="Submit Search">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                </button>
             </div>
             <div>
-               <select id="filter-software" onchange="performSearch()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+               <select id="filter-software" onchange="triggerMarketplaceLoad()" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer" aria-label="Filter by Platform">
                   <option value="" class="bg-neutral-900">All Platforms</option>
                   <option value="paper" class="bg-neutral-900" <%= serverInfo.software === 'paper' ? 'selected' : '' %>>Paper / Spigot / Bukkit</option>
                   <option value="velocity" class="bg-neutral-900" <%= serverInfo.software === 'velocity' ? 'selected' : '' %>>Velocity</option>
@@ -61,28 +61,158 @@
                </select>
             </div>
             <div>
-               <input type="text" id="filter-version" onchange="performSearch()" placeholder="Minecraft Version (e.g. <%= serverInfo.minecraftVersion || '1.21' %>)" value="<%= serverInfo.minecraftVersion || '' %>" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all">
+               <input type="text" id="filter-version" onchange="triggerMarketplaceLoad()" placeholder="Minecraft Version (e.g. <%= serverInfo.minecraftVersion || '1.21' %>)" value="<%= serverInfo.minecraftVersion || '' %>" class="w-full px-4 py-3 bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500 rounded-xl text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-all" aria-label="Filter by Minecraft Version">
             </div>
          </div>
 
-         <!-- Loader & Empty State -->
-         <div id="browse-loader" class="hidden flex justify-center py-12">
-            <svg class="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
-               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+         <!-- Recent Searches -->
+         <div id="recent-searches" class="flex flex-wrap gap-2 items-center mb-6 hidden">
+            <span class="text-xs text-neutral-400">Recent:</span>
+            <!-- dynamically inserted search tags -->
          </div>
 
-         <div id="browse-empty" class="text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
-            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <p class="text-base font-medium">Search for Minecraft plugins to begin</p>
-            <p class="text-xs text-neutral-500 mt-1">Queries are sent securely across Modrinth, Hangar, Spiget, and GitHub.</p>
+         <!-- Category Pills -->
+         <div id="categories-container" class="flex flex-wrap gap-2 mb-8 items-center" role="group" aria-label="Categories filter">
+            <!-- dynamically generated category pills -->
          </div>
 
-         <!-- Search Results Grid -->
-         <div id="browse-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+         <!-- Warning Banner (Partial Failures) -->
+         <div id="marketplace-warning" class="hidden mb-6 bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-center justify-between">
+            <span class="text-xs flex items-center">
+               <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+               </svg>
+               <span id="warning-text">Some providers are temporarily unavailable. Showing cached/partial results.</span>
+            </span>
+            <button onclick="triggerMarketplaceLoad()" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded-lg transition-all font-semibold">Retry</button>
+         </div>
+
+         <!-- Error Banner -->
+         <div id="marketplace-error" class="hidden text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-rose-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p class="text-base font-medium text-white">Failed to connect to marketplace providers</p>
+            <p class="text-xs text-neutral-500 mt-1 mb-4">Please check your network connection or try again.</p>
+            <button onclick="triggerMarketplaceLoad()" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow transition-all">Retry Connection</button>
+         </div>
+
+         <!-- Marketplace Home Dashboard -->
+         <div id="marketplace-home" class="space-y-12">
+            <!-- Featured Section -->
+            <section aria-labelledby="featured-title">
+               <h2 id="featured-title" class="text-base font-semibold text-white mb-4 flex items-center">
+                  <svg class="h-5 w-5 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Featured Plugins
+               </h2>
+               <div id="featured-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <!-- dynamically loaded cards -->
+               </div>
+            </section>
+
+            <!-- Recommended & Recent Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+               <!-- Recommended Column (2/3 width) -->
+               <div class="lg:col-span-2 space-y-8">
+                  <section aria-labelledby="recommended-title">
+                     <h2 id="recommended-title" class="text-base font-semibold text-white mb-4 flex items-center">
+                        <svg class="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Recommended For Your Server
+                     </h2>
+                     <div id="recommended-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- cards -->
+                     </div>
+                  </section>
+
+                  <!-- Most Popular Section -->
+                  <section aria-labelledby="popular-title">
+                     <h2 id="popular-title" class="text-base font-semibold text-white mb-4 flex items-center">
+                        <svg class="h-5 w-5 mr-2 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Most Popular Plugins
+                     </h2>
+                     <div id="popular-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- cards -->
+                     </div>
+                     
+                     <div id="popular-infinite-loader" class="hidden flex justify-center py-6">
+                        <svg class="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                     </div>
+                  </section>
+               </div>
+
+               <!-- Sidebar Column (1/3 width) -->
+               <div class="space-y-8">
+                  <!-- Recently Updated Panel -->
+                  <section aria-labelledby="recent-title" class="bg-white/5 border border-white/5 rounded-2xl p-6">
+                     <h2 id="recent-title" class="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-4 flex items-center">
+                        <svg class="h-4 w-4 mr-2 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Recently Updated
+                     </h2>
+                     <div id="recent-list" class="space-y-4">
+                        <!-- compact items -->
+                     </div>
+                  </section>
+
+                  <!-- Installed Plugins Summary -->
+                  <section aria-labelledby="installed-summary-title" class="bg-white/5 border border-white/5 rounded-2xl p-6">
+                     <h2 id="installed-summary-title" class="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-4 flex items-center">
+                        <svg class="h-4 w-4 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Installed Plugins
+                     </h2>
+                     <div id="installed-summary-list" class="space-y-3">
+                        <!-- compact lists -->
+                     </div>
+                     <button onclick="switchTab('installed')" class="mt-4 w-full text-center text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-all">Manage All Installed Plugins &rarr;</button>
+                  </section>
+               </div>
+            </div>
+         </div>
+
+         <!-- Search Results Panel (visible only when searching) -->
+         <div id="search-results-container" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+               <h2 id="search-title" class="text-base font-semibold text-white">Search Results</h2>
+               <button onclick="clearSearch()" class="text-xs text-indigo-400 hover:text-indigo-350 font-medium">Clear Search</button>
+            </div>
+            <div id="search-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               <!-- search items -->
+            </div>
+            
+            <div id="search-infinite-loader" class="hidden flex justify-center py-6">
+               <svg class="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+            </div>
+            
+            <!-- No Results Suggestions -->
+            <div id="search-no-results" class="hidden text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
+               <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+               <p class="text-base font-medium text-white">No results matching your query</p>
+               <div class="text-xs text-neutral-500 mt-2 space-y-1 max-w-md mx-auto">
+                  <p>&bull; Check your spelling or try more general terms.</p>
+                  <p>&bull; Try clearing category or version filters.</p>
+                  <p>&bull; If searching a repository directly, use "owner/name" syntax.</p>
+               </div>
+               <button onclick="clearSearch()" class="mt-4 rounded-xl bg-white/10 hover:bg-white/15 px-4 py-2 text-xs font-semibold text-white shadow transition-all">Clear Search</button>
+            </div>
+         </div>
       </div>
 
       <!-- Tab: Installed -->
@@ -98,7 +228,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5M5 19v-4M9 5h4" />
             </svg>
-            <p class="text-base font-medium">No plugins detected</p>
+            <p class="text-base font-medium text-white">No plugins detected</p>
             <p class="text-xs text-neutral-500 mt-1">Upload JARs to the <code>/plugins/</code> directory or install them using the browser tab.</p>
          </div>
 
@@ -108,7 +238,7 @@
       <!-- Tab: Tasks -->
       <div id="panel-tasks" class="tab-panel hidden">
          <div id="tasks-empty" class="text-center py-16 text-neutral-400 bg-white/5 border border-white/5 rounded-2xl">
-            <p class="text-base font-medium">No active or queued tasks</p>
+            <p class="text-base font-medium text-white">No active or queued tasks</p>
             <p class="text-xs text-neutral-500 mt-1">Installation and uninstall tasks progress will stream here in real time.</p>
          </div>
 
@@ -117,7 +247,7 @@
    </div>
 
    <!-- Modal: Plugin Details -->
-   <div id="details-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+   <div id="details-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true" tabindex="-1">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
          <div class="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
          <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -143,7 +273,7 @@
                         <p class="text-sm text-neutral-400 mt-1" id="modal-author">by author</p>
                      </div>
                   </div>
-                  <button onclick="closeModal()" class="text-neutral-400 hover:text-white transition">
+                  <button onclick="closeModal()" class="text-neutral-400 hover:text-white transition focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1" aria-label="Close modal">
                      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                      </svg>
@@ -161,29 +291,29 @@
                      <!-- Dependency Resolution Area -->
                      <div id="modal-dependencies-section" class="hidden">
                         <h4 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Dependencies</h4>
-                        <div id="modal-dependencies" class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/5"></div>
+                        <div id="modal-dependencies" class="space-y-2 bg-white/5 p-4 rounded-xl border border-white/5 text-sm"></div>
                      </div>
 
                      <div>
                         <h4 class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Compatible Versions</h4>
                         <div class="overflow-hidden border border-white/5 rounded-xl">
                            <table class="min-w-full divide-y divide-white/5">
-                              <thead class="bg-white/5">
+                              <thead class="bg-white/5 text-left">
                                  <tr>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Version</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Minecraft</th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">Loaders</th>
+                                    <th scope="col" class="px-4 py-3 text-xs font-medium text-neutral-400 uppercase tracking-wider">Version</th>
+                                    <th scope="col" class="px-4 py-3 text-xs font-medium text-neutral-400 uppercase tracking-wider">Minecraft</th>
+                                    <th scope="col" class="px-4 py-3 text-xs font-medium text-neutral-400 uppercase tracking-wider">Loaders</th>
                                     <th scope="col" class="relative px-4 py-3"></th>
                                  </tr>
                               </thead>
-                              <tbody id="modal-versions-list" class="divide-y divide-white/5 bg-transparent"></tbody>
+                              <tbody id="modal-versions-list" class="divide-y divide-white/5 bg-transparent text-sm"></tbody>
                            </table>
                         </div>
                      </div>
                   </div>
 
                   <!-- Sidebar Right Details -->
-                  <div class="space-y-6 bg-white/5 p-5 rounded-2xl border border-white/5 h-fit">
+                  <div class="space-y-6 bg-white/5 p-5 rounded-2xl border border-white/5 h-fit text-sm">
                      <div>
                         <span class="text-xs font-semibold text-neutral-400 block mb-1">Downloads</span>
                         <span class="text-lg font-bold text-white" id="modal-downloads">0</span>
@@ -200,13 +330,13 @@
                         <span class="text-xs font-semibold text-neutral-400 block mb-1">Links</span>
                         <div class="space-y-2 mt-2">
                            <a id="modal-link-source" href="#" target="_blank" class="flex items-center text-xs text-neutral-300 hover:text-white transition">
-                              <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg class="h-4 w-4 mr-2 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                               </svg>
                               Source Code
                            </a>
                            <a id="modal-link-wiki" href="#" target="_blank" class="flex items-center text-xs text-neutral-300 hover:text-white transition">
-                              <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg class="h-4 w-4 mr-2 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                               </svg>
                               Wiki / Documentation
@@ -225,6 +355,33 @@
    // Variables passed from Express
    const instanceId = '<%= instance.Id %>';
    const activeTasks = new Map(); // taskId -> task progress record
+
+   let installedList = [];
+   let updatesList = [];
+   let allMarketplacePlugins = [];
+   let activeCategory = '';
+
+   // Pagination & Infinite Scroll state
+   let popularPage = 1;
+   let popularHasMore = true;
+   let isLoadingMorePopular = false;
+
+   let searchPage = 1;
+   let searchHasMore = true;
+   let isLoadingMoreSearch = false;
+
+   // Search debouncing / AbortController
+   let searchDebounceTimeout = null;
+   let searchAbortController = null;
+
+   // Optimistic Install state
+   const installingPlugins = new Map(); // providerId -> task progress state
+   const cardTasks = new Map(); // taskId -> {provider, providerId}
+   const sessionInstalled = new Set(); // set of completed providerId:version
+
+   // Dropdown Tracker
+   let activeDropdown = null;
+   let modalTriggerElement = null;
 
    // Connect to the background task socket
    let ws;
@@ -253,7 +410,45 @@
    // Initialize elements
    document.addEventListener('DOMContentLoaded', () => {
       connectWebSocket();
-      loadInstalledPlugins();
+      
+      // Load client-side localStorage cache immediately
+      const cached = localStorage.getItem('skyport_marketplace_cache');
+      if (cached) {
+         try {
+            const payload = JSON.parse(cached);
+            renderMarketplaceData(payload);
+         } catch (e) {
+            console.error('Failed to parse cached marketplace data:', e);
+         }
+      } else {
+         // Show initial skeletons if no cache exists
+         renderSkeletons('featured-grid', 4);
+         renderSkeletons('recommended-grid', 4);
+         renderSkeletons('popular-grid', 8);
+         renderRecentSkeletons();
+      }
+
+      // Load installed and fresh marketplace asynchronously
+      loadInstalledPlugins().then(() => {
+         loadUpdates();
+         triggerMarketplaceLoad(false);
+      });
+
+      // Render recent searches
+      renderRecentSearches();
+
+      // Handle card dropdown closing on body click
+      document.addEventListener('click', closeAllDropdowns);
+
+      // Listen for window scroll to implement Infinite scroll
+      window.addEventListener('scroll', handleInfiniteScroll);
+
+      // Refresh data in background every 5 minutes
+      setInterval(() => {
+         triggerMarketplaceLoad(false);
+         loadInstalledPlugins();
+         loadUpdates();
+      }, 300000);
    });
 
    // SPA Tab Switcher
@@ -277,13 +472,737 @@
       }
    }
 
+   // ─── Marketplace Loading ──────────────────────────────────────────────────
+   async function triggerMarketplaceLoad(showLoading = false) {
+      if (showLoading) {
+         renderSkeletons('featured-grid', 4);
+         renderSkeletons('recommended-grid', 4);
+         renderSkeletons('popular-grid', 8);
+         renderRecentSkeletons();
+         document.getElementById('marketplace-error').classList.add('hidden');
+         document.getElementById('marketplace-home').classList.remove('hidden');
+      }
+
+      const software = document.getElementById('filter-software').value;
+      const version = document.getElementById('filter-version').value;
+
+      try {
+         const results = await Promise.allSettled([
+            fetch(`/instance/${instanceId}/plugins/api/featured?software=${software}&version=${version}`).then(r => r.json()),
+            fetch(`/instance/${instanceId}/plugins/api/popular?software=${software}&version=${version}`).then(r => r.json()),
+            fetch(`/instance/${instanceId}/plugins/api/recent?software=${software}&version=${version}`).then(r => r.json())
+         ]);
+
+         const featuredData = results[0].status === 'fulfilled' ? results[0].value : null;
+         const popularData = results[1].status === 'fulfilled' ? results[1].value : null;
+         const recentData = results[2].status === 'fulfilled' ? results[2].value : null;
+
+         // Check warnings
+         let warnings = [];
+         if (featuredData?.warnings) warnings.push(...featuredData.warnings);
+         if (popularData?.warnings) warnings.push(...popularData.warnings);
+         if (recentData?.warnings) warnings.push(...recentData.warnings);
+         showMarketplaceWarnings(warnings);
+
+         if (!featuredData && !popularData && !recentData) {
+            const cached = localStorage.getItem('skyport_marketplace_cache');
+            if (!cached) {
+               document.getElementById('marketplace-error').classList.remove('hidden');
+               document.getElementById('marketplace-home').classList.add('hidden');
+            }
+            return;
+         }
+
+         const payload = {
+            featured: featuredData?.results || [],
+            popular: popularData?.results || [],
+            recent: recentData?.results || []
+         };
+
+         // Write to cache
+         localStorage.setItem('skyport_marketplace_cache', JSON.stringify(payload));
+         
+         // Keep all plugins referenced for category dynamic scanning
+         allMarketplacePlugins = [...payload.featured, ...payload.popular, ...payload.recent];
+
+         // Render lists
+         renderMarketplaceData(payload);
+      } catch (err) {
+         console.error('Failed to trigger marketplace loading:', err);
+      }
+   }
+
+   function showMarketplaceWarnings(warnings) {
+      const banner = document.getElementById('marketplace-warning');
+      if (warnings && warnings.length > 0) {
+         const list = Array.from(new Set(warnings)).map(w => w.toUpperCase()).join(', ');
+         document.getElementById('warning-text').innerText = `Warning: Provider APIs (${list}) are temporarily unavailable. Displaying cached/partial results.`;
+         banner.classList.remove('hidden');
+      } else {
+         banner.classList.add('hidden');
+      }
+   }
+
+   function renderMarketplaceData(payload, skipCategories = false) {
+      popularHasMore = true;
+      popularPage = 1;
+      isLoadingMorePopular = false;
+
+      // Featured grid
+      const featuredGrid = document.getElementById('featured-grid');
+      featuredGrid.innerHTML = '';
+      const featuredList = (payload.featured || []).slice(0, 4);
+      if (featuredList.length === 0) {
+         featuredGrid.innerHTML = '<div class="col-span-full py-6 text-center text-xs text-neutral-500">No featured plugins available.</div>';
+      } else {
+         featuredList.forEach(plugin => {
+            featuredGrid.appendChild(createPluginCard(plugin));
+         });
+      }
+
+      // Recommended grid
+      const recGrid = document.getElementById('recommended-grid');
+      recGrid.innerHTML = '';
+      const recList = (payload.popular || []).slice(0, 4);
+      if (recList.length === 0) {
+         recGrid.innerHTML = '<div class="col-span-full py-6 text-center text-xs text-neutral-500">No recommended plugins available.</div>';
+      } else {
+         recList.forEach(plugin => {
+            recGrid.appendChild(createPluginCard(plugin));
+         });
+      }
+
+      // Popular grid (initial load: page 1)
+      const popularGrid = document.getElementById('popular-grid');
+      popularGrid.innerHTML = '';
+      const popularList = (payload.popular || []).slice(0, 16);
+      if (popularList.length === 0) {
+         popularGrid.innerHTML = '<div class="col-span-full py-6 text-center text-xs text-neutral-500">No popular plugins available.</div>';
+      } else {
+         popularList.forEach(plugin => {
+            popularGrid.appendChild(createPluginCard(plugin));
+         });
+      }
+
+      // Recent updated list in sidebar
+      const recentList = document.getElementById('recent-list');
+      recentList.innerHTML = '';
+      const recentItems = (payload.recent || []).slice(0, 6);
+      if (recentItems.length === 0) {
+         recentList.innerHTML = '<p class="text-xs text-neutral-500 text-center py-4">No recent updates.</p>';
+      } else {
+         recentItems.forEach(plugin => {
+            recentList.appendChild(createRecentSidebarItem(plugin));
+         });
+      }
+
+      // Dynamic Categories
+      if (!skipCategories) {
+         generateDynamicCategories(allMarketplacePlugins);
+      }
+   }
+
+   function generateDynamicCategories(plugins) {
+      const categoriesSet = new Set();
+      plugins.forEach(p => {
+         if (Array.isArray(p.categories)) {
+            p.categories.forEach(cat => {
+               if (cat) categoriesSet.add(cat.trim().toLowerCase());
+            });
+         }
+      });
+
+      const container = document.getElementById('categories-container');
+      container.innerHTML = '';
+
+      // Add 'All' pill
+      const allPill = document.createElement('button');
+      allPill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${activeCategory === '' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-neutral-400 hover:text-white'}`;
+      allPill.innerText = 'All Categories';
+      allPill.onclick = () => selectCategory('');
+      container.appendChild(allPill);
+
+      Array.from(categoriesSet).sort().forEach(cat => {
+         const pill = document.createElement('button');
+         const isSelected = activeCategory === cat;
+         pill.className = `px-3 py-1.5 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-white/5 text-neutral-400 hover:text-white'}`;
+         pill.innerText = cat.charAt(0).toUpperCase() + cat.slice(1);
+         pill.onclick = () => selectCategory(cat);
+         container.appendChild(pill);
+      });
+   }
+
+   function selectCategory(cat) {
+      activeCategory = cat;
+      const cached = localStorage.getItem('skyport_marketplace_cache');
+      if (cached) {
+         try {
+            const payload = JSON.parse(cached);
+            if (cat === '') {
+               renderMarketplaceData(payload, true);
+            } else {
+               const filterFn = p => Array.isArray(p.categories) && p.categories.some(c => c.toLowerCase() === cat);
+               renderMarketplaceData({
+                  featured: payload.featured.filter(filterFn),
+                  popular: payload.popular.filter(filterFn),
+                  recent: payload.recent.filter(filterFn)
+               }, true);
+            }
+         } catch (e) {}
+      }
+      generateDynamicCategories(allMarketplacePlugins);
+   }
+
+   function renderSkeletons(containerId, count) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+         const skeleton = document.createElement('div');
+         skeleton.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 h-[360px] animate-pulse flex flex-col justify-between';
+         skeleton.innerHTML = `
+            <div>
+               <div class="flex items-start justify-between">
+                  <div class="w-14 h-14 bg-white/10 rounded-xl"></div>
+                  <div class="w-16 h-5 bg-white/10 rounded-md"></div>
+               </div>
+               <div class="h-5 bg-white/10 rounded-md w-3/4 mt-6"></div>
+               <div class="h-3 bg-white/10 rounded-md w-1/2 mt-2"></div>
+               <div class="space-y-2 mt-4">
+                  <div class="h-3 bg-white/10 rounded-md w-full"></div>
+                  <div class="h-3 bg-white/10 rounded-md w-5/6"></div>
+                  <div class="h-3 bg-white/10 rounded-md w-2/3"></div>
+               </div>
+            </div>
+            <div class="pt-4 border-t border-white/5 flex items-center justify-between">
+               <div class="w-20 h-4 bg-white/10 rounded-md"></div>
+               <div class="w-12 h-4 bg-white/10 rounded-md"></div>
+            </div>
+            <div class="mt-4 flex gap-2">
+               <div class="flex-grow h-9 bg-white/10 rounded-xl"></div>
+               <div class="w-16 h-9 bg-white/10 rounded-xl"></div>
+               <div class="w-9 h-9 bg-white/10 rounded-xl"></div>
+            </div>
+         `;
+         container.appendChild(skeleton);
+      }
+   }
+
+   function renderRecentSkeletons() {
+      const list = document.getElementById('recent-list');
+      list.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+         const item = document.createElement('div');
+         item.className = 'flex items-center space-x-3 p-2 animate-pulse';
+         item.innerHTML = `
+            <div class="w-10 h-10 bg-white/10 rounded-lg"></div>
+            <div class="flex-grow space-y-2">
+               <div class="h-3 bg-white/10 rounded w-2/3"></div>
+               <div class="h-2.5 bg-white/10 rounded w-1/2"></div>
+            </div>
+            <div class="w-8 h-3 bg-white/10 rounded"></div>
+         `;
+         list.appendChild(item);
+      }
+   }
+
+   function createRecentSidebarItem(plugin) {
+      const item = document.createElement('div');
+      item.className = 'flex items-center space-x-3 p-2 hover:bg-white/5 rounded-xl transition cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500' + (plugin.verified ? ' border border-emerald-500/10' : '');
+      item.setAttribute('tabindex', '0');
+      item.onclick = () => openDetails(plugin.provider, plugin.id);
+      item.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetails(plugin.provider, plugin.id); } };
+      
+      const diff = Date.now() - new Date(plugin.lastUpdated).getTime();
+      const days = Math.floor(diff / 86400000);
+      const timeStr = days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
+
+      item.innerHTML = `
+         <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" class="w-10 h-10 rounded-lg bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+         <div class="flex-grow min-w-0">
+            <h4 class="text-xs font-semibold text-white truncate">${plugin.name}</h4>
+            <p class="text-[10px] text-neutral-400 mt-0.5 truncate">by ${plugin.author}</p>
+         </div>
+         <span class="text-[9px] text-neutral-500 font-medium whitespace-nowrap">${timeStr}</span>
+      `;
+      return item;
+   }
+
+   function renderInstalledSummary() {
+      const summaryList = document.getElementById('installed-summary-list');
+      summaryList.innerHTML = '';
+      const topItems = installedList.slice(0, 5);
+
+      if (topItems.length === 0) {
+         summaryList.innerHTML = '<p class="text-xs text-neutral-500 text-center py-4">No plugins installed.</p>';
+      } else {
+         topItems.forEach(plugin => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2 hover:bg-white/5 rounded-xl transition border border-white/5';
+            item.innerHTML = `
+               <div class="min-w-0 flex-grow">
+                  <h4 class="text-xs font-semibold text-white truncate">${plugin.name}</h4>
+                  <p class="text-[10px] text-neutral-400 mt-0.5">v${plugin.version}</p>
+               </div>
+               <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-semibold whitespace-nowrap ml-2">Installed</span>
+            `;
+            summaryList.appendChild(item);
+         });
+      }
+   }
+
+   function renderAllGrids() {
+      // Re-render marketplace display to overlay installed/update badges
+      const cached = localStorage.getItem('skyport_marketplace_cache');
+      if (cached) {
+         try {
+            const payload = JSON.parse(cached);
+            if (activeCategory === '') {
+               renderMarketplaceData(payload, true);
+            } else {
+               const filterFn = p => Array.isArray(p.categories) && p.categories.some(c => c.toLowerCase() === activeCategory);
+               renderMarketplaceData({
+                  featured: payload.featured.filter(filterFn),
+                  popular: payload.popular.filter(filterFn),
+                  recent: payload.recent.filter(filterFn)
+               }, true);
+            }
+         } catch (e) {}
+      }
+
+      // Re-render search results if open
+      const query = document.getElementById('plugin-search-input').value.trim();
+      if (query) {
+         performSearch();
+      }
+   }
+
+   // ─── Search Functionality ─────────────────────────────────────────────────
+   function handleSearchInput() {
+      clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(performSearch, 300);
+   }
+
+   async function performSearch() {
+      const query = document.getElementById('plugin-search-input').value.trim();
+      if (!query) {
+         clearSearch();
+         return;
+      }
+
+      addRecentSearch(query);
+
+      document.getElementById('marketplace-home').classList.add('hidden');
+      document.getElementById('search-results-container').classList.remove('hidden');
+
+      const searchGrid = document.getElementById('search-grid');
+      renderSkeletons('search-grid', 6);
+      document.getElementById('search-no-results').classList.add('hidden');
+
+      searchPage = 1;
+      searchHasMore = true;
+      isLoadingMoreSearch = false;
+
+      if (searchAbortController) searchAbortController.abort();
+      searchAbortController = new AbortController();
+
+      const software = document.getElementById('filter-software').value;
+      const version = document.getElementById('filter-version').value;
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/search?q=${encodeURIComponent(query)}&page=${searchPage}&software=${software}&version=${version}`, {
+            signal: searchAbortController.signal
+         });
+         const data = await res.json();
+         searchHasMore = data.hasMore;
+         
+         searchGrid.innerHTML = '';
+         if (data.results && data.results.length > 0) {
+            data.results.forEach(plugin => {
+               searchGrid.appendChild(createPluginCard(plugin, query));
+            });
+         } else {
+            document.getElementById('search-no-results').classList.remove('hidden');
+         }
+      } catch (err) {
+         if (err.name !== 'AbortError') {
+            console.error('Search failed:', err);
+         }
+      }
+   }
+
+   function clearSearch() {
+      document.getElementById('plugin-search-input').value = '';
+      document.getElementById('marketplace-home').classList.remove('hidden');
+      document.getElementById('search-results-container').classList.add('hidden');
+      document.getElementById('search-no-results').classList.add('hidden');
+      renderRecentSearches();
+      renderAllGrids();
+   }
+
+   function highlightText(text, query) {
+      if (!query || !text) return text;
+      const regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+      return text.replace(regex, '<mark class="bg-indigo-500/30 text-white rounded px-0.5 font-semibold">$1</mark>');
+   }
+
+   // Recent Searches
+   function addRecentSearch(query) {
+      if (!query || query.length < 2) return;
+      let searches = getRecentSearches();
+      searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
+      searches.unshift(query);
+      searches = searches.slice(0, 5);
+      localStorage.setItem('skyport_recent_searches', JSON.stringify(searches));
+      renderRecentSearches();
+   }
+
+   function getRecentSearches() {
+      try {
+         return JSON.parse(localStorage.getItem('skyport_recent_searches')) || [];
+      } catch (e) {
+         return [];
+      }
+   }
+
+   function renderRecentSearches() {
+      const container = document.getElementById('recent-searches');
+      const searches = getRecentSearches();
+      if (searches.length === 0) {
+         container.classList.add('hidden');
+         return;
+      }
+      container.classList.remove('hidden');
+      container.innerHTML = '<span class="text-xs text-neutral-400 mr-2">Recent searches:</span>';
+      
+      searches.forEach(term => {
+         const tag = document.createElement('button');
+         tag.className = 'text-xs bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white px-2.5 py-1 rounded-md transition focus:outline-none focus:ring-1 focus:ring-indigo-500';
+         tag.innerText = term;
+         tag.onclick = () => {
+            document.getElementById('plugin-search-input').value = term;
+            performSearch();
+         };
+         container.appendChild(tag);
+      });
+   }
+
+   // ─── Infinite Scroll ───────────────────────────────────────────────────────
+   function handleInfiniteScroll() {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300) {
+         const isSearchActive = document.getElementById('plugin-search-input').value.trim() !== '';
+         if (isSearchActive) {
+            if (searchHasMore && !isLoadingMoreSearch) {
+               loadNextSearchPage();
+            }
+         } else {
+            if (popularHasMore && !isLoadingMorePopular) {
+               loadNextPopularPage();
+            }
+         }
+      }
+   }
+
+   async function loadNextPopularPage() {
+      isLoadingMorePopular = true;
+      document.getElementById('popular-infinite-loader').classList.remove('hidden');
+
+      popularPage++;
+      const software = document.getElementById('filter-software').value;
+      const version = document.getElementById('filter-version').value;
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/popular?page=${popularPage}&software=${software}&version=${version}`);
+         const data = await res.json();
+         popularHasMore = data.hasMore;
+
+         const popularGrid = document.getElementById('popular-grid');
+         (data.results || []).forEach(plugin => {
+            popularGrid.appendChild(createPluginCard(plugin));
+         });
+      } catch (err) {
+         popularPage--;
+         console.error('Failed to load more popular plugins:', err);
+      } finally {
+         isLoadingMorePopular = false;
+         document.getElementById('popular-infinite-loader').classList.add('hidden');
+      }
+   }
+
+   async function loadNextSearchPage() {
+      isLoadingMoreSearch = true;
+      document.getElementById('search-infinite-loader').classList.remove('hidden');
+
+      searchPage++;
+      const query = document.getElementById('plugin-search-input').value.trim();
+      const software = document.getElementById('filter-software').value;
+      const version = document.getElementById('filter-version').value;
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/search?q=${encodeURIComponent(query)}&page=${searchPage}&software=${software}&version=${version}`);
+         const data = await res.json();
+         searchHasMore = data.hasMore;
+
+         const searchGrid = document.getElementById('search-grid');
+         (data.results || []).forEach(plugin => {
+            searchGrid.appendChild(createPluginCard(plugin, query));
+         });
+      } catch (err) {
+         searchPage--;
+         console.error('Failed to load more search results:', err);
+      } finally {
+         isLoadingMoreSearch = false;
+         document.getElementById('search-infinite-loader').classList.add('hidden');
+      }
+   }
+
+   // ─── Plugin Card Builder ───────────────────────────────────────────────────
+   function createPluginCard(plugin, highlightQuery = '') {
+      const card = document.createElement('div');
+      const uniqueId = `${plugin.provider}-${plugin.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      card.className = 'bg-white/5 border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.07] rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between h-[360px] relative group';
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'article');
+      card.setAttribute('aria-label', `${plugin.name} by ${plugin.author}`);
+      
+      card.addEventListener('keydown', (e) => {
+         if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openDetails(plugin.provider, plugin.id);
+         }
+      });
+
+      const isInstalled = installedList.find(p => p.name.toLowerCase() === plugin.name.toLowerCase());
+      const isSessionInstalled = sessionInstalled.has(`${plugin.provider}:${plugin.id}`);
+      const taskState = installingPlugins.get(`${plugin.provider}:${plugin.id}`);
+      const hasUpdate = updatesList.some(u => u.plugin.name.toLowerCase() === plugin.name.toLowerCase());
+
+      let installBtnContent = '';
+      let installBtnClass = '';
+      let installBtnDisabled = false;
+      let statusText = '';
+      let statusClass = 'text-neutral-400';
+
+      if (taskState) {
+         installBtnDisabled = true;
+         if (taskState.status === 'failed') {
+            installBtnContent = 'Retry';
+            installBtnClass = 'bg-rose-600 hover:bg-rose-500 text-white';
+            installBtnDisabled = false;
+            statusText = 'Installation failed';
+            statusClass = 'text-rose-400';
+         } else {
+            installBtnContent = `
+               <svg class="animate-spin h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+               ${taskState.status.charAt(0).toUpperCase() + taskState.status.slice(1)}...
+            `;
+            installBtnClass = 'bg-neutral-800 text-neutral-400 border border-white/5 cursor-not-allowed';
+            statusText = taskState.detail || 'Processing task...';
+         }
+      } else if (isSessionInstalled) {
+         installBtnContent = 'Restart Required';
+         installBtnClass = 'bg-amber-600 hover:bg-amber-500 text-white';
+         statusText = 'Pending server restart';
+         statusClass = 'text-amber-400';
+      } else if (isInstalled) {
+         if (hasUpdate) {
+            installBtnContent = 'Update Available';
+            installBtnClass = 'bg-indigo-600 hover:bg-indigo-500 text-white';
+            statusText = 'Update is available';
+            statusClass = 'text-indigo-400';
+         } else {
+            installBtnContent = 'Installed';
+            installBtnClass = 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 cursor-default';
+            installBtnDisabled = true;
+            statusText = 'Up to date';
+            statusClass = 'text-emerald-400';
+         }
+      } else {
+         installBtnContent = 'Install';
+         installBtnClass = 'bg-indigo-600 hover:bg-indigo-500 text-white';
+      }
+
+      let platformBadges = (plugin.compatibleLoaders || []).slice(0, 2)
+         .map(l => `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">${l}</span>`)
+         .join(' ');
+
+      const highlightedName = highlightText(plugin.name, highlightQuery);
+      const highlightedDesc = highlightText(plugin.description || 'No description.', highlightQuery);
+
+      card.innerHTML = `
+         <div>
+            <div class="flex items-start justify-between">
+               <div class="relative">
+                  <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" alt="" class="w-14 h-14 rounded-xl bg-neutral-800 object-contain p-1 border border-white/5" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
+                  ${plugin.verified ? `
+                  <span class="absolute -top-1.5 -right-1.5 bg-emerald-500 text-neutral-950 rounded-full p-0.5 shadow-md flex items-center justify-center w-5 h-5 border border-neutral-900" title="Verified Project">
+                     <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                     </svg>
+                  </span>` : ''}
+               </div>
+               <div class="flex flex-col items-end space-y-1">
+                  <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-neutral-800 px-2 py-0.5 rounded-md border border-white/5">${plugin.provider}</span>
+                  ${plugin.latestVersion ? `<span class="text-[10px] font-medium text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">v${plugin.latestVersion}</span>` : ''}
+               </div>
+            </div>
+
+            <h3 class="text-base font-semibold text-white mt-4 truncate group-hover:text-indigo-400 transition-colors" title="${plugin.name}">${highlightedName}</h3>
+            <p class="text-xs text-neutral-400 mt-1">by <span class="text-neutral-300 font-medium">${plugin.author}</span></p>
+            <p class="text-xs text-neutral-400 mt-3 line-clamp-3 h-12 leading-relaxed">${highlightedDesc}</p>
+         </div>
+
+         <div>
+            <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+               <div class="flex flex-wrap gap-1 max-w-[60%]">
+                  ${platformBadges || '<span class="text-[10px] text-neutral-500">Universal</span>'}
+               </div>
+               <span class="text-xs text-neutral-400 flex items-center font-medium">
+                  <svg class="h-3.5 w-3.5 mr-1 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  ${plugin.downloads.toLocaleString()}
+               </span>
+            </div>
+
+            ${statusText ? `<p class="text-[10px] mt-2 font-medium truncate ${statusClass}">${statusText}</p>` : ''}
+
+            <div class="mt-4 flex gap-2 relative">
+               <button id="install-btn-${uniqueId}" 
+                       ${installBtnDisabled ? 'disabled' : ''} 
+                       onclick="event.stopPropagation(); handleCardInstall('${plugin.provider}', '${plugin.id}', '${plugin.name.replace(/'/g, "\\'")}', this)" 
+                       class="flex-grow rounded-xl py-2 px-3 text-xs font-semibold shadow transition-all duration-200 flex items-center justify-center gap-1 ${installBtnClass}">
+                  ${installBtnContent}
+               </button>
+               
+               <button onclick="event.stopPropagation(); openDetails('${plugin.provider}', '${plugin.id}')" 
+                       class="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-xs font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  Details
+               </button>
+               
+               <div class="relative inline-block text-left">
+                  <button onclick="event.stopPropagation(); toggleCardDropdown(event, '${uniqueId}')" 
+                          class="dropdown-btn rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 p-2 text-neutral-400 hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          aria-label="More actions"
+                          aria-haspopup="true">
+                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                     </svg>
+                  </button>
+                  <div id="dropdown-${uniqueId}" 
+                       class="hidden card-dropdown absolute right-0 bottom-full mb-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-xl z-30 py-1 transition-all">
+                     ${isInstalled ? `
+                        <button onclick="event.stopPropagation(); handleCardReinstall('${plugin.provider}', '${plugin.id}', '${isInstalled.filename}', '${plugin.name.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-2 text-xs text-neutral-300 hover:bg-white/5 transition focus:outline-none focus:bg-white/5">Reinstall</button>
+                        <button onclick="event.stopPropagation(); uninstallPlugin('${isInstalled.filename}', '${plugin.name.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition focus:outline-none focus:bg-rose-500/10">Uninstall</button>
+                     ` : `
+                        <button onclick="event.stopPropagation(); handleCardInstall('${plugin.provider}', '${plugin.id}', '${plugin.name.replace(/'/g, "\\'")}', document.getElementById('install-btn-${uniqueId}'))" class="w-full text-left px-4 py-2 text-xs text-neutral-300 hover:bg-white/5 transition focus:outline-none focus:bg-white/5">Quick Install</button>
+                     `}
+                     ${plugin.sourceUrl ? `<a href="${plugin.sourceUrl}" target="_blank" onclick="event.stopPropagation();" class="block px-4 py-2 text-xs text-neutral-300 hover:bg-white/5 transition focus:outline-none focus:bg-white/5">View Source</a>` : ''}
+                  </div>
+               </div>
+            </div>
+         </div>
+      `;
+      return card;
+   }
+
+   // ─── Optimistic Install Event Flow ─────────────────────────────────────────
+   async function handleCardInstall(provider, pluginId, pluginName, btnElement) {
+      installingPlugins.set(`${provider}:${pluginId}`, { status: 'queued', detail: 'Fetching download version...' });
+      renderAllGrids();
+
+      try {
+         const res = await fetch(`/instance/${instanceId}/plugins/api/details/${provider}/${pluginId}`);
+         const data = await res.json();
+         const versions = data.versions || [];
+
+         if (versions.length === 0) {
+            throw new Error('No versions available.');
+         }
+
+         const first = versions[0];
+         const downloadUrl = first.files[0]?.url || first.downloadUrl;
+         const filename = first.files[0]?.filename || first.filename;
+         const checksum = first.files[0]?.hashes?.sha256 || first.checksum || '';
+
+         if (!downloadUrl || !filename) {
+            throw new Error('Plugin does not offer a direct download link.');
+         }
+
+         const installRes = await fetch(`/instance/${instanceId}/plugins/api/install`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               url: downloadUrl,
+               filename,
+               checksum,
+               provider,
+               providerId: pluginId,
+               pluginName
+            })
+         });
+
+         const installData = await installRes.json();
+         if (installData.taskId) {
+            cardTasks.set(installData.taskId, { provider, providerId: pluginId });
+            installingPlugins.set(`${provider}:${pluginId}`, { status: 'queued', detail: 'Queued in background tasks...' });
+         } else {
+            throw new Error(installData.error || 'Failed to install');
+         }
+      } catch (err) {
+         installingPlugins.set(`${provider}:${pluginId}`, { status: 'failed', detail: err.message });
+      }
+      renderAllGrids();
+   }
+
+   async function handleCardReinstall(provider, pluginId, filename, pluginName) {
+      if (!confirm(`Are you sure you want to reinstall ${pluginName}?`)) return;
+
+      installingPlugins.set(`${provider}:${pluginId}`, { status: 'uninstalling', detail: 'Removing old version...' });
+      renderAllGrids();
+
+      try {
+         await fetch(`/instance/${instanceId}/plugins/api/uninstall`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, pluginName })
+         });
+         
+         await handleCardInstall(provider, pluginId, pluginName);
+      } catch (err) {
+         installingPlugins.set(`${provider}:${pluginId}`, { status: 'failed', detail: err.message });
+         renderAllGrids();
+      }
+   }
+
+   // Card dropdown toggle
+   function toggleCardDropdown(event, uniqueId) {
+      event.stopPropagation();
+      const dropdown = document.getElementById(`dropdown-${uniqueId}`);
+      const isHidden = dropdown.classList.contains('hidden');
+      closeAllDropdowns();
+
+      if (isHidden) {
+         dropdown.classList.remove('hidden');
+         activeDropdown = dropdown;
+      }
+   }
+
+   function closeAllDropdowns() {
+      document.querySelectorAll('.card-dropdown').forEach(dd => dd.classList.add('hidden'));
+      activeDropdown = null;
+   }
+
    // ─── Task Progress Rendering ──────────────────────────────────────────────
    function updateTaskProgress(data) {
       const { taskId, status, detail } = data;
       activeTasks.set(taskId, { status, detail });
 
       const tasksBadge = document.getElementById('tasks-badge');
-      const activeCount = Array.from(activeTasks.values()).filter(t => t.status === 'running' || t.status === 'queued').length;
+      const activeCount = Array.from(activeTasks.values()).filter(t => t.status === 'running' || t.status === 'queued' || t.status === 'downloading' || t.status === 'installing' || t.status === 'validating').length;
+      
       if (activeCount > 0) {
          tasksBadge.innerText = activeCount;
          tasksBadge.classList.remove('hidden');
@@ -291,10 +1210,25 @@
          tasksBadge.classList.add('hidden');
       }
 
-      // Re-render task panel content
       renderTasksList();
 
-      // If a task completes, automatically reload installed plugin list in background
+      // Check card tasks optimistic matching
+      if (cardTasks.has(taskId)) {
+         const { provider, providerId } = cardTasks.get(taskId);
+         if (status === 'completed') {
+            sessionInstalled.add(`${provider}:${providerId}`);
+            installingPlugins.delete(`${provider}:${providerId}`);
+            cardTasks.delete(taskId);
+            loadInstalledPlugins();
+         } else if (status === 'failed') {
+            installingPlugins.set(`${provider}:${providerId}`, { status: 'failed', detail });
+            cardTasks.delete(taskId);
+         } else {
+            installingPlugins.set(`${provider}:${providerId}`, { status, detail });
+         }
+         renderAllGrids();
+      }
+
       if (status === 'completed') {
          setTimeout(() => {
             activeTasks.delete(taskId);
@@ -349,9 +1283,9 @@
          item.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4';
          item.innerHTML = `
             <div class="flex-grow">
-               <div class="flex items-center justify-between mb-2">
-                  <span class="text-sm font-semibold text-white">Task ID: ${id.substring(0, 8)}</span>
-                  <span class="text-xs font-semibold ${textColor} uppercase tracking-wider">${task.status}</span>
+               <div class="flex items-center justify-between mb-2 text-sm">
+                  <span class="font-semibold text-white">Task ID: ${id.substring(0, 8)}</span>
+                  <span class="font-semibold ${textColor} uppercase tracking-wider">${task.status}</span>
                </div>
                <div class="w-full bg-neutral-800 rounded-full h-2">
                   <div class="${statusColor} h-2 rounded-full transition-all duration-500" style="width: ${percent}"></div>
@@ -363,182 +1297,99 @@
       });
    }
 
-   // ─── Installed Plugins Listing ─────────────────────────────────────────────
-   let installedList = [];
-   async function loadInstalledPlugins() {
-      const loader = document.getElementById('installed-loader');
+   // ─── Installed Tab Listing ────────────────────────────────────────────────
+   function renderInstalledTab() {
       const emptyState = document.getElementById('installed-empty');
       const list = document.getElementById('installed-list');
-      const badge = document.getElementById('installed-badge');
+      const loader = document.getElementById('installed-loader');
 
-      loader.classList.remove('hidden');
-      list.classList.add('hidden');
-      emptyState.classList.add('hidden');
-
-      try {
-         const res = await fetch(`/instance/${instanceId}/plugins/api/installed`);
-         const data = await res.json();
-         installedList = data.plugins || [];
-
-         badge.innerText = installedList.length;
-         badge.classList.remove('hidden');
-
-         if (installedList.length === 0) {
-            emptyState.classList.remove('hidden');
-         } else {
-            list.classList.remove('hidden');
-            list.innerHTML = '';
-            installedList.forEach(plugin => {
-               const item = document.createElement('div');
-               item.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 flex items-center justify-between hover:bg-white/[0.07] transition-all duration-300';
-               
-               let desc = plugin.description || 'No description provided.';
-               let metaBadges = `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-1 text-xs font-medium text-neutral-400">${plugin.platform || 'unknown'}</span>`;
-
-               if (plugin.parseError) {
-                  metaBadges += `<span class="inline-flex items-center rounded-md bg-rose-500/10 px-2 py-1 text-xs font-medium text-rose-400 ml-2">Metadata Parse Error</span>`;
-                  desc = `<span class="text-rose-400 font-mono text-xs">Failed to parse JAR: ${plugin.parseError}</span>`;
-               }
-
-               item.innerHTML = `
-                  <div class="flex items-center space-x-4">
-                     <div class="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-neutral-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                     </div>
-                     <div>
-                        <div class="flex items-center space-x-2">
-                           <h3 class="text-sm font-semibold text-white">${plugin.name}</h3>
-                           <span class="inline-flex items-center rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400">v${plugin.version}</span>
-                        </div>
-                        <p class="text-xs text-neutral-400 mt-1 max-w-xl truncate">${desc}</p>
-                        <div class="mt-2 flex items-center space-x-2">
-                           ${metaBadges}
-                           <span class="text-xs text-neutral-500 font-mono">${plugin.filename} (${(plugin.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
-                        </div>
-                     </div>
-                  </div>
-                  <div class="flex items-center space-x-3">
-                     <button onclick="uninstallPlugin('${plugin.filename}')" class="rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2.5 text-xs font-medium text-rose-400 transition-all">
-                        Uninstall
-                     </button>
-                  </div>
-               `;
-               list.appendChild(item);
-            });
-         }
-      } catch (err) {
-         console.error('Failed to load installed plugins:', err);
-      } finally {
-         loader.classList.add('hidden');
+      loader.classList.add('hidden');
+      if (installedList.length === 0) {
+         emptyState.classList.remove('hidden');
+         list.classList.add('hidden');
+         return;
       }
+
+      emptyState.classList.add('hidden');
+      list.classList.remove('hidden');
+      list.innerHTML = '';
+
+      installedList.forEach(plugin => {
+         const item = document.createElement('div');
+         item.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 flex items-center justify-between hover:bg-white/[0.07] transition-all duration-300';
+         
+         let desc = plugin.description || 'No description provided.';
+         let metaBadges = `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-1 text-xs font-medium text-neutral-400">${plugin.platform || 'unknown'}</span>`;
+
+         if (plugin.parseError) {
+            metaBadges += `<span class="inline-flex items-center rounded-md bg-rose-500/10 px-2 py-1 text-xs font-medium text-rose-400 ml-2">Metadata Parse Error</span>`;
+            desc = `<span class="text-rose-400 font-mono text-xs">Failed to parse JAR: ${plugin.parseError}</span>`;
+         }
+
+         item.innerHTML = `
+            <div class="flex items-center space-x-4">
+               <div class="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-neutral-400 border border-white/5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+               </div>
+               <div>
+                  <div class="flex items-center space-x-2">
+                     <h3 class="text-sm font-semibold text-white">${plugin.name}</h3>
+                     <span class="inline-flex items-center rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400">v${plugin.version}</span>
+                  </div>
+                  <p class="text-xs text-neutral-400 mt-1 max-w-xl truncate">${desc}</p>
+                  <div class="mt-2 flex items-center space-x-2">
+                     ${metaBadges}
+                     <span class="text-xs text-neutral-500 font-mono">${plugin.filename} (${(plugin.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
+                  </div>
+               </div>
+            </div>
+            <div class="flex items-center space-x-3">
+               <button onclick="uninstallPlugin('${plugin.filename}', '${plugin.name.replace(/'/g, "\\'")}')" class="rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2.5 text-xs font-medium text-rose-400 transition-all focus:outline-none focus:ring-2 focus:ring-rose-500">
+                  Uninstall
+               </button>
+            </div>
+         `;
+         list.appendChild(item);
+      });
    }
 
    // ─── Uninstall Handler ──────────────────────────────────────────────────────
-   async function uninstallPlugin(filename) {
-      if (!confirm(`Are you sure you want to remove '${filename}'? This action is immediate.`)) return;
+   async function uninstallPlugin(filename, pluginName) {
+      if (!confirm(`Are you sure you want to remove '${pluginName}'? This action is immediate.`)) return;
 
       try {
          const res = await fetch(`/instance/${instanceId}/plugins/api/uninstall`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename })
+            body: JSON.stringify({ filename, pluginName })
          });
          const data = await res.json();
          switchTab('tasks');
          if (data.taskId) {
-            updateTaskProgress({ taskId: data.taskId, status: 'uninstalling', detail: `Uninstalling ${filename}...` });
+            updateTaskProgress({ taskId: data.taskId, status: 'uninstalling', detail: `Uninstalling ${pluginName}...` });
          }
       } catch (err) {
          alert('Uninstall request failed.');
       }
    }
 
-   // ─── Search Handlers ────────────────────────────────────────────────────────
-   function handleSearchKeyup(e) {
-      if (e.key === 'Enter') performSearch();
-   }
-
-   async function performSearch() {
-      const query = document.getElementById('plugin-search-input').value.trim();
-      if (!query) return;
-
-      const software = document.getElementById('filter-software').value;
-      const version = document.getElementById('filter-version').value;
-
-      const loader = document.getElementById('browse-loader');
-      const emptyState = document.getElementById('browse-empty');
-      const resultsContainer = document.getElementById('browse-results');
-
-      loader.classList.remove('hidden');
-      resultsContainer.classList.add('hidden');
-      emptyState.classList.add('hidden');
-
-      try {
-         const res = await fetch(`/instance/${instanceId}/plugins/api/search?q=${encodeURIComponent(query)}&software=${software}&version=${version}`);
-         const data = await res.json();
-         const results = data.results || [];
-
-         if (results.length === 0) {
-            emptyState.innerHTML = `
-               <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-               </svg>
-               <p class="text-base font-medium">No results found for "${query}"</p>
-               <p class="text-xs text-neutral-500 mt-1">Try broadening your search or adjusting platform/version filters.</p>
-            `;
-            emptyState.classList.remove('hidden');
-         } else {
-            resultsContainer.innerHTML = '';
-            resultsContainer.classList.remove('hidden');
-
-            results.forEach(plugin => {
-               const card = document.createElement('div');
-               card.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 hover:border-indigo-500/30 hover:bg-white/[0.07] cursor-pointer transition-all duration-300 flex flex-col justify-between h-64';
-               card.onclick = () => openDetails(plugin.provider, plugin.providerId);
-
-               let platformBadges = (plugin.compatibleLoaders || []).slice(0, 3)
-                  .map(l => `<span class="inline-flex items-center rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">${l}</span>`)
-                  .join(' ');
-
-               card.innerHTML = `
-                  <div>
-                     <div class="flex items-start justify-between">
-                        <img src="${plugin.iconUrl || 'https://i.imgur.com/uvDunAR.png'}" alt="" class="w-12 h-12 rounded-xl bg-white/5 object-contain" onerror="this.src='https://i.imgur.com/uvDunAR.png'">
-                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-wide bg-neutral-800/40 px-2 py-1 rounded-md border border-white/5">${plugin.provider}</span>
-                     </div>
-                     <h3 class="text-sm font-semibold text-white mt-4 truncate">${plugin.name}</h3>
-                     <p class="text-xs text-neutral-400 mt-2 line-clamp-2 h-8">${plugin.description || 'No description.'}</p>
-                  </div>
-                  <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                     <div class="flex flex-wrap gap-1 max-w-[60%]">
-                        ${platformBadges || '<span class="text-[10px] text-neutral-500">Universal</span>'}
-                     </div>
-                     <span class="text-[11px] font-medium text-neutral-400 flex items-center">
-                        <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        ${plugin.downloads.toLocaleString()}
-                     </span>
-                  </div>
-               `;
-               resultsContainer.appendChild(card);
-            });
-         }
-      } catch (err) {
-         console.error('Failed to perform search:', err);
-      } finally {
-         loader.classList.add('hidden');
-      }
-   }
-
    // ─── Plugin Details Modal ──────────────────────────────────────────────────
    function closeModal() {
       document.getElementById('details-modal').classList.add('hidden');
+      if (modalTriggerElement) {
+         modalTriggerElement.focus();
+      }
    }
 
+   // Close modal on Escape
+   document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+   });
+
    async function openDetails(provider, pluginId) {
+      modalTriggerElement = document.activeElement;
       const modal = document.getElementById('details-modal');
       const loader = document.getElementById('modal-loader');
       const content = document.getElementById('modal-content');
@@ -546,6 +1397,8 @@
       modal.classList.remove('hidden');
       loader.classList.remove('hidden');
       content.classList.add('hidden');
+
+      modal.focus();
 
       try {
          const res = await fetch(`/instance/${instanceId}/plugins/api/details/${provider}/${pluginId}`);
@@ -585,6 +1438,25 @@
             wikiLink.classList.add('hidden');
          }
 
+         // Populate dependencies
+         const depSection = document.getElementById('modal-dependencies-section');
+         const depContainer = document.getElementById('modal-dependencies');
+         depContainer.innerHTML = '';
+         if (details.dependencies && details.dependencies.length > 0) {
+            depSection.classList.remove('hidden');
+            details.dependencies.forEach(dep => {
+               const pill = document.createElement('div');
+               pill.className = 'flex items-center justify-between p-2 bg-white/5 rounded-lg border border-white/5';
+               pill.innerHTML = `
+                  <span>${dep.projectId || dep.name}</span>
+                  <span class="text-[10px] uppercase font-bold text-neutral-400">${dep.type || 'required'}</span>
+               `;
+               depContainer.appendChild(pill);
+            });
+         } else {
+            depSection.classList.add('hidden');
+         }
+
          // Populate versions
          const tbody = document.getElementById('modal-versions-list');
          tbody.innerHTML = '';
@@ -604,7 +1476,7 @@
 
                const actionBtn = isInstalled 
                   ? `<button disabled class="rounded-lg bg-neutral-800 text-neutral-500 px-3 py-1.5 text-xs font-semibold">Installed</button>`
-                  : `<button onclick="installPluginVersion('${encodeURIComponent(version.downloadUrl)}', '${encodeURIComponent(version.filename)}', '${version.checksum || ''}')" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 text-xs font-semibold transition-all">Install</button>`;
+                  : `<button onclick="installPluginVersion('${encodeURIComponent(version.files[0]?.url || version.downloadUrl)}', '${encodeURIComponent(version.files[0]?.filename || version.filename)}', '${version.checksum || ''}', '${provider}', '${pluginId}', '${details.name.replace(/'/g, "\\'")}')" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 text-xs font-semibold transition-all">Install</button>`;
 
                row.innerHTML = `
                   <td class="px-4 py-3 text-xs font-bold text-white">${version.versionNumber}</td>
@@ -621,10 +1493,13 @@
       }
    }
 
-   // ─── Install Version Handler ───────────────────────────────────────────────
-   async function installPluginVersion(url, filename, checksum) {
+   // Install Version Handler
+   async function installPluginVersion(url, filename, checksum, provider, providerId, pluginName) {
       closeModal();
       switchTab('tasks');
+
+      installingPlugins.set(`${provider}:${providerId}`, { status: 'queued', detail: `Preparing to download ${decodeURIComponent(filename)}...` });
+      renderAllGrids();
 
       try {
          const res = await fetch(`/instance/${instanceId}/plugins/api/install`, {
@@ -633,15 +1508,20 @@
             body: JSON.stringify({
                url: decodeURIComponent(url),
                filename: decodeURIComponent(filename),
-               checksum
+               checksum,
+               provider,
+               providerId,
+               pluginName
             })
          });
          const data = await res.json();
          if (data.taskId) {
-            updateTaskProgress({ taskId: data.taskId, status: 'downloading', detail: `Preparing to download ${decodeURIComponent(filename)}...` });
+            cardTasks.set(data.taskId, { provider, providerId });
+            updateTaskProgress({ taskId: data.taskId, status: 'downloading', detail: `Downloading ${decodeURIComponent(filename)}...` });
          }
       } catch (err) {
-         alert('Failed to enqueue installation task.');
+         installingPlugins.set(`${provider}:${providerId}`, { status: 'failed', detail: 'Failed to enqueue task.' });
+         renderAllGrids();
       }
    }
 </script>

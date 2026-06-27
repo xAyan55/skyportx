@@ -16,9 +16,14 @@ class HangarProvider extends BaseProvider {
   async search(query, filters = {}) {
     try {
       const params = {
-        q: query,
-        limit: 20
+        limit: query ? 20 : 40
       };
+
+      if (query) {
+        params.q = query;
+      } else {
+        params.sort = filters.sortBy === "updated" ? "updated" : "downloads";
+      }
 
       const response = await this.api.get("/projects", { params });
       return (response.data.result || []).map(proj => PluginNormalizer.normalizeHangar(proj));

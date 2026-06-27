@@ -47,10 +47,14 @@ class ModrinthProvider extends BaseProvider {
       }
 
       const params = {
-        query: query,
+        query: query || "",
         facets: JSON.stringify(facets),
-        limit: 20
+        limit: query ? 20 : 40
       };
+
+      if (!query) {
+        params.index = filters.sortBy === "updated" ? "updated" : "downloads";
+      }
 
       const response = await this.api.get("/search", { params });
       return (response.data.hits || []).map(hit => PluginNormalizer.normalizeModrinth(hit));

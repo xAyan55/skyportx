@@ -41,6 +41,36 @@ const UpdateService        = require("../../utils/services/UpdateService");
 
 // Task queue (interface only – backed by MemoryQueue singleton)
 const { queue }            = require("../../utils/backgroundTaskQueue");
+const cache                = require("../../utils/cache");
+
+// Runtime Provider Match Populator Helper
+async function populateProviderInfo(installedPlugins, filters) {
+  return Promise.all(installedPlugins.map(async (plugin) => {
+    const cacheKey = `provider-match:${plugin.name.toLowerCase()}`;
+    let match = cache.get(cacheKey);
+    
+    if (match === undefined) {
+      match = null;
+      try {
+        const searchRes = await SearchService.search(plugin.name, filters);
+        const exactMatch = (searchRes.results || []).find(r => r.name.toLowerCase() === plugin.name.toLowerCase());
+        if (exactMatch) {
+          match = { provider: exactMatch.provider, providerId: exactMatch.id };
+        }
+      } catch (err) {
+        log.warn(`Failed to search provider match for ${plugin.name}: ${err.message}`);
+      }
+      
+      const ttl = match ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+      cache.set(cacheKey, match, ttl);
+    }
+    
+    if (match) {
+      return { ...plugin, provider: match.provider, providerId: match.providerId };
+    }
+    return plugin;
+  }));
+}
 
 // Providers (for getDetails / getVersions)
 const ModrinthProvider     = require("../../utils/providers/Modrinth");
@@ -111,7 +141,10 @@ router.get("/instance/:id/plugins", requirePluginAccess, async (req, res) => {
 router.get("/instance/:id/plugins/api/installed", requirePluginAccess, async (req, res) => {
   try {
     const installed = await InstallationService.listInstalled(req.instance);
-    res.json({ plugins: installed });
+    const serverInfo = await InstallationService.detectServer(req.instance);
+    const filters = { software: serverInfo.software, minecraftVersion: serverInfo.minecraftVersion };
+    const populated = await populateProviderInfo(installed, filters);
+    res.json({ plugins: populated });
   } catch (err) {
     log.error("Plugins installed list error:", err);
     res.status(500).json({ error: "Failed to list installed plugins" });
@@ -123,12 +156,116 @@ router.get("/instance/:id/plugins/api/search", requirePluginAccess, async (req, 
   const { q, software, version, category } = req.query;
   if (!q) return res.status(400).json({ error: "Query parameter 'q' is required" });
 
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 25;
+
   try {
-    const results = await SearchService.search(q, { software, minecraftVersion: version, category });
-    res.json({ results });
+    const data = await SearchService.search(q, { software, minecraftVersion: version, category });
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginated = data.results.slice(startIndex, endIndex);
+
+    res.json({
+      results: paginated,
+      hasMore: endIndex < data.results.length,
+      warnings: data.warnings
+    });
   } catch (err) {
     log.error("Plugins search error:", err);
     res.status(500).json({ error: "Search failed" });
+  }
+});
+
+// ─── Marketplace Featured ──────────────────────────────────────────────────────
+router.get("/instance/:id/plugins/api/featured", requirePluginAccess, async (req, res) => {
+  try {
+    const serverInfo = await InstallationService.detectServer(req.instance);
+    const { software = serverInfo.software, version = serverInfo.minecraftVersion, category } = req.query;
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 25;
+
+    const data = await SearchService.search("", {
+      software,
+      minecraftVersion: version,
+      category,
+      sortBy: "featured"
+    });
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginated = data.results.slice(startIndex, endIndex);
+
+    res.json({
+      results: paginated,
+      hasMore: endIndex < data.results.length,
+      warnings: data.warnings
+    });
+  } catch (err) {
+    log.error("Plugins featured error:", err);
+    res.status(500).json({ error: "Failed to load featured plugins" });
+  }
+});
+
+// ─── Marketplace Popular ───────────────────────────────────────────────────────
+router.get("/instance/:id/plugins/api/popular", requirePluginAccess, async (req, res) => {
+  try {
+    const serverInfo = await InstallationService.detectServer(req.instance);
+    const { software = serverInfo.software, version = serverInfo.minecraftVersion, category } = req.query;
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 25;
+
+    const data = await SearchService.search("", {
+      software,
+      minecraftVersion: version,
+      category,
+      sortBy: "downloads"
+    });
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginated = data.results.slice(startIndex, endIndex);
+
+    res.json({
+      results: paginated,
+      hasMore: endIndex < data.results.length,
+      warnings: data.warnings
+    });
+  } catch (err) {
+    log.error("Plugins popular error:", err);
+    res.status(500).json({ error: "Failed to load popular plugins" });
+  }
+});
+
+// ─── Marketplace Recent ────────────────────────────────────────────────────────
+router.get("/instance/:id/plugins/api/recent", requirePluginAccess, async (req, res) => {
+  try {
+    const serverInfo = await InstallationService.detectServer(req.instance);
+    const { software = serverInfo.software, version = serverInfo.minecraftVersion, category } = req.query;
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 25;
+
+    const data = await SearchService.search("", {
+      software,
+      minecraftVersion: version,
+      category,
+      sortBy: "updated"
+    });
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginated = data.results.slice(startIndex, endIndex);
+
+    res.json({
+      results: paginated,
+      hasMore: endIndex < data.results.length,
+      warnings: data.warnings
+    });
+  } catch (err) {
+    log.error("Plugins recent error:", err);
+    res.status(500).json({ error: "Failed to load recently updated plugins" });
   }
 });
 
@@ -155,10 +292,12 @@ router.get("/instance/:id/plugins/api/updates", requirePluginAccess, async (req,
   try {
     const installed   = await InstallationService.listInstalled(req.instance);
     const serverInfo  = await InstallationService.detectServer(req.instance);
+    const filters = { software: serverInfo.software, minecraftVersion: serverInfo.minecraftVersion };
+    const populated   = await populateProviderInfo(installed, filters);
     // Use Modrinth as primary provider for update checks (most comprehensive)
     const updates = await UpdateService.checkAll(
       req.params.id,
-      installed,
+      populated,
       PROVIDERS.modrinth,
       serverInfo.software,
       serverInfo.minecraftVersion,
@@ -173,13 +312,19 @@ router.get("/instance/:id/plugins/api/updates", requirePluginAccess, async (req,
 
 // ─── Install ──────────────────────────────────────────────────────────────────
 router.post("/instance/:id/plugins/api/install", requirePluginAccess, async (req, res) => {
-  const { url, filename, checksum } = req.body;
+  const { url, filename, checksum, provider, providerId, pluginName } = req.body;
   if (!url || !filename) {
     return res.status(400).json({ error: "url and filename are required" });
   }
 
   const instanceId = req.params.id;
   const instance   = req.instance;
+
+  // Cache provider mapping optimistically
+  if (pluginName && provider && providerId) {
+    const cacheKey = `provider-match:${pluginName.toLowerCase()}`;
+    cache.set(cacheKey, { provider, providerId }, 24 * 60 * 60 * 1000);
+  }
 
   const taskId = await queue.enqueue(
     instanceId,
@@ -196,11 +341,15 @@ router.post("/instance/:id/plugins/api/install", requirePluginAccess, async (req
 
 // ─── Uninstall ────────────────────────────────────────────────────────────────
 router.post("/instance/:id/plugins/api/uninstall", requirePluginAccess, async (req, res) => {
-  const { filename } = req.body;
+  const { filename, pluginName } = req.body;
   if (!filename) return res.status(400).json({ error: "filename is required" });
 
   const instanceId = req.params.id;
   const instance   = req.instance;
+
+  if (pluginName) {
+    cache.delete(`provider-match:${pluginName.toLowerCase()}`);
+  }
 
   const taskId = await queue.enqueue(
     instanceId,
